@@ -19,10 +19,12 @@ int main () {
         std::cout << "3. OpenMP LU" << std::endl;
         std::cout << "4. SYCL LU" << std::endl;
         std::cout << "5. Exit" << std::endl;
+        std::cout << "> ";
         std::cin >> op;
         if (op == 5) break;
 
         std::cout << "Matrix size n (n x n) ? " << std::endl;
+        std::cout << "> ";
         std::cin >> n;
         if (n <= 0) {
             std::cout << "Invalid n." << std::endl;
@@ -35,6 +37,7 @@ int main () {
                 break;
             case 2:
                 std::cout << "Block size ? " << std::endl;
+                std::cout << "> ";
                 std::cin >> block_size;
                 if (block_size <= 0) {
                     std::cout << "Invalid block size." << std::endl;
@@ -46,6 +49,7 @@ int main () {
                 break;
             case 3:
                 std::cout << "Number of threads? " << std::endl;
+                std::cout << "> ";
                 std::cin >> nt;
                 if (nt <= 0) {
                     std::cout << "Invalid thread count." << std::endl;
