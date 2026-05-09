@@ -1,6 +1,7 @@
 # CPA Assignment 2 - Shared Memory LU Factorization
 
 This project contains the implementations for LU factorization in four variants:
+
 1. Sequential LU
 2. Block-oriented sequential LU
 3. Shared-memory OpenMP LU
