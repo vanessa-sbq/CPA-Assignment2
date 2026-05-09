@@ -26,6 +26,6 @@ void display_measurements(double start, double end, int n, double e_before, doub
  * @param f The function to be measured
  * @param n Number of rows/columns of a matrix
  */
-void measure(std::function<void(int)> f, int n);
+void measure(const std::function<void(int)> &f, int n);
 
 #endif // __PERF__

@@ -38,7 +38,7 @@ void display_measurements(double start, double end, int n, double e_before, doub
 	printf("Watts: %.6f\n", watts);
 }
 
-void measure(std::function<void(int)> f, int n) {
+void measure(const std::function<void(int)> &f, int n) {
 	startOrResetMatrices(n);
 	
 	auto e_before = read_energy_uj();
@@ -49,7 +49,7 @@ void measure(std::function<void(int)> f, int n) {
 	double end = omp_get_wtime(); // Get end time
 	auto e_after = read_energy_uj();
 
-	display_measurements(start, end, n, e_before, e_after);
+	display_measurements(start, end, n, (double) e_before, (double) e_after);
 	show_result_matrix(n);
 
 	freeMatrices();
