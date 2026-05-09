@@ -1,6 +1,8 @@
 #ifndef __MATRIX__
 #define __MATRIX__
 
+extern double *A, *L, *U;
+
 /**
  * Prints the contents of a matrix.
  * @param M Pointer to the matrix data
