@@ -38,6 +38,25 @@ long long read_energy_uj() {
 
 
 /**
+ * Prints the contents of a matrix.
+ * @param M Pointer to the matrix data
+ * @param n Number of rows/columns in the matrix
+ * @param name Name of the matrix to display
+ */
+void print_matrix(double *M, int n, const char* name) {
+    cout << name << " = [" << endl;
+    for (int i = 0; i < n; i++) {
+        cout << "  ";
+        for (int j = 0; j < n; j++) {
+            cout << M[i*n + j] << " ";
+        }
+        cout << endl;
+    }
+    cout << "]" << endl;
+}
+
+
+/**
  * Starts or resets the matrices for LU factorization.
  * @param n Number of rows/columns of matrix A
  */
@@ -50,11 +69,16 @@ void startOrResetMatrices(int n) {
 
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
-			A[i * n + j] = (i == j) ? (double)n : 1.0;
+			A[i * n + j] = (i == j) ? (double)n : 1.0; // FIXME: Not sure if this should be initialized like this
 			L[i * n + j] = (i == j) ? 1.0 : 0.0;
 			U[i * n + j] = 0.0;
 		}
 	}
+
+    // TODO: Remove (DEBUG)
+    print_matrix(A, n, "A");
+    print_matrix(L, n, "L");
+    print_matrix(U, n, "U");
 }
 
 
@@ -195,7 +219,6 @@ void lu_fact_sycl(int n) {
 
 	freeMatrices();
 }
-
 
 
 /**
