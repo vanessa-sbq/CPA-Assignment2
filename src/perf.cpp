@@ -1,0 +1,56 @@
+#include <fstream>
+#include <omp.h>
+#include "perf.hpp"
+#include "matrix.hpp"
+
+long long read_energy_uj() {
+    std::ifstream f(POWERCAP_PATH); // directory path where the energy_uj file is located.
+	if (f.fail())
+		return 0;
+
+	// This part is commented for the benchmark on FEUP's PCs
+	// if (f.fail()) { 
+	// 	fprintf(stderr, "Failed to open %s: %s\n", POWERCAP_PATH, strerror(errno));
+	// 	if (errno == ENOENT) {
+	// 		fprintf(stderr, "Is powercap installed?\n");
+	// 	} else if (errno == EACCES) {
+	// 		fprintf(stderr, "Try running with sudo to get energy information\n");
+	// 		return 0;
+	// 	}
+	// 	exit(1);
+	// }
+	
+    long long val; f >> val;
+    return val;
+}
+
+void display_measurements(double start, double end, int n, double e_before, double e_after) {
+	double executionTime = (double)(end - start);
+	printf("Time: %g seconds\n", executionTime);
+
+	// 2/3 * n^3 flops per factorization
+	double gflops = (2.0 / 3.0) * n * n * n / (executionTime * 1e9);
+	printf("GFlop/s: %g\n", gflops);
+
+	double joules = (e_after - e_before) / 1e6;
+	double watts = joules / executionTime;
+	printf("Joules: %.6f\n", joules);
+	printf("Watts: %.6f\n", watts);
+}
+
+void measure(const std::function<void(int)> &f, int n) {
+	startOrResetMatrices(n);
+	
+	auto e_before = read_energy_uj();
+	double start = omp_get_wtime(); // Get start time
+	
+	f(n);
+	
+	double end = omp_get_wtime(); // Get end time
+	auto e_after = read_energy_uj();
+
+	display_measurements(start, end, n, (double) e_before, (double) e_after);
+	show_result_matrix(n);
+
+	freeMatrices();
+}

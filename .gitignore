@@ -1,4 +1,8 @@
 bin/
+build/
+.cache/
 Assignment2
 cpa
 *.xlsx
+.vscode/
+.clang-tidy
