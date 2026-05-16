@@ -1,24 +1,26 @@
 #ifndef __LU_FACTORIZATION__
 #define __LU_FACTORIZATION__
 
+#include "matrix.hpp"
+
 /**
  * TODO: Implement sequential LU factorization.
  */
-void lu_fact_sequential(int n);
+auto lu_fact_sequential(Matrix<>& A) -> void;
 
 /**
  * TODO: Implement block-oriented LU factorization.
  */
-void lu_fact_block(int n, int block_size);
+auto lu_fact_block(Matrix<>& A, unsigned block_size) -> void;
 
 /**
  * TODO: Implement shared-memory LU factorization using OpenMP.
  */
-void lu_fact_omp(int n, int num_threads);
+auto lu_fact_omp(Matrix<>& A, unsigned num_threads) -> void;
 
 /**
  * TODO: Implement SYCL LU factorization.
  */
-void lu_fact_sycl(int n);
+auto lu_fact_sycl(Matrix<>& A) -> void;
 
 #endif // __LU_FACTORIZATION__

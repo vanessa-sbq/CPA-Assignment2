@@ -1,9 +1,10 @@
 #include <fstream>
+#include <iostream>
+#include <print>
 #include <omp.h>
 #include "perf.hpp"
-#include "matrix.hpp"
 
-long long read_energy_uj() {
+auto read_energy_uj() -> long long {
     std::ifstream f(POWERCAP_PATH); // directory path where the energy_uj file is located.
     if (f.fail())
         return 0;
@@ -24,36 +25,59 @@ long long read_energy_uj() {
     return val;
 }
 
-void display_measurements(double start, double end, int n, double e_before, double e_after) {
-    double executionTime = (double)(end - start);
-    printf("Time: %g seconds\n", executionTime);
+auto display_measurements(
+    double start,
+    double end,
+    unsigned n,
+    double e_before,
+    double e_after
+) -> void {
+    double executionTime = (end - start);
+    std::println("Time: {} seconds", executionTime);
 
     // 2/3 * n^3 flops per factorization
     double gflops = (2.0 / 3.0) * n * n * n / (executionTime * 1e9);
-    printf("GFlop/s: %g\n", gflops);
+    std::println("GFlop/s: {}", gflops);
 
     double joules = (e_after - e_before) / 1e6;
     double watts = joules / executionTime;
-    printf("Joules: %.6f\n", joules);
-    printf("Watts: %.6f\n", watts);
+    std::println("Joules: {:.6f}", joules);
+    std::println("Watts: {:.6f}", watts);
 }
 
-void measure(const std::function<void(int)> &f, int n) {
-    startOrResetMatrices(n);
+auto perform(const Alg &f, unsigned n) -> void {
+    Matrix<> A(n);
+    double *b, *x, *y;
+    startOrResetMatrices(n, A, b, x, y);
+    
+    measure(f, A);
+    
+    solve(A, b, x, y);
+    
+    A.preview("A");
+    std::cout << "x[*]: ";
+    for (unsigned i = 0; i < std::min(10u, n); i++) {
+        std::cout << x[i] << " ";
+    }
+    std::cout << std::endl;
 
+    freeMatrices(b, x, y);
+}
+
+auto measure(const Alg &f, Matrix<>& A) -> void {
     auto e_before = read_energy_uj();
     double start = omp_get_wtime(); // Get start time
 
-    f(n);
+    f(A);
 
     double end = omp_get_wtime(); // Get end time
     auto e_after = read_energy_uj();
 
-    display_measurements(start, end, n, (double) e_before, (double) e_after);
-
-    solve(n);
-
-    show_result_matrix(n);
-
-    freeMatrices();
+    display_measurements(
+        start,
+        end,
+        A.size,
+        (double) e_before,
+        (double) e_after
+    );
 }
