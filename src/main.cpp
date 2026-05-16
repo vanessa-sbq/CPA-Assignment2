@@ -1,7 +1,7 @@
 #include <iostream>
 #include <omp.h>
 #include "perf.hpp"
-#include "lu_factorization.hpp"
+#include "lu_fact.hpp"
 
 inline auto sequential(unsigned n) -> void;
 inline auto block(unsigned n) -> void;
@@ -61,7 +61,7 @@ auto main () -> int {
 }
 
 auto sequential(unsigned n) -> void {
-    perform(lu_fact_sequential, n);
+    perform(lufact::sequential, n);
 }
 
 auto block(unsigned n) -> void {
@@ -74,7 +74,7 @@ auto block(unsigned n) -> void {
         return;
     }
     perform([block_size](Matrix<>& A) {
-        lu_fact_block(A, block_size);
+        lufact::block(A, block_size);
     }, n);
 }
 
@@ -89,11 +89,11 @@ auto omp(unsigned n) -> void {
     }
     perform([nt](Matrix<>& A) {
         omp_set_num_threads(nt);
-        lu_fact_omp(A, nt);
+        lufact::omp(A, nt);
     }, n);
 }
 
 auto sycl(unsigned n) -> void {
-    perform(lu_fact_sycl, n);
+    perform(lufact::sycl, n);
 }
 

@@ -1,6 +1,5 @@
 #include <fstream>
 #include <iostream>
-#include <print>
 #include <omp.h>
 #include "perf.hpp"
 
@@ -33,16 +32,16 @@ auto display_measurements(
     double e_after
 ) -> void {
     double executionTime = (end - start);
-    std::println("Time: {} seconds", executionTime);
+    printf("Time: %g seconds\n", executionTime);
 
     // 2/3 * n^3 flops per factorization
     double gflops = (2.0 / 3.0) * n * n * n / (executionTime * 1e9);
-    std::println("GFlop/s: {}", gflops);
+    printf("GFlop/s: %g\n", gflops);
 
     double joules = (e_after - e_before) / 1e6;
     double watts = joules / executionTime;
-    std::println("Joules: {:.6f}", joules);
-    std::println("Watts: {:.6f}", watts);
+    printf("Joules: %.6f\n", joules);
+    printf("Watts: %.6f\n", watts);
 }
 
 auto perform(const Alg& f, unsigned n) -> void {

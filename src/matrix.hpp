@@ -34,6 +34,10 @@ class Matrix {
         this->m[i * this->size + j] = value;
     }
 
+    inline auto operator()(unsigned i ,unsigned j) const -> T& {
+        return this->m[i * this->size + j];
+    }
+
     /**
      * Prints the contents of a matrix
      * @param name Name of the matrix to be displayed
