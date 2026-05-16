@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <iostream>
-#include <ostream>
 #include <random>
 #include "matrix.hpp"
 
@@ -15,52 +12,6 @@ std::uniform_real_distribution<> dis(0.0, 10.0); // TODO: Consider using a large
 double rnd() {
     return dis(gen);
 }
-
-template<typename T>
-Matrix<T>::Matrix(unsigned size):
-    size(size),
-    m(new T[size * size]) {}
-
-template<typename T>
-Matrix<T>::~Matrix() {
-    delete [] m;
-}
-
-template<typename T>
-auto Matrix<T>::get(unsigned i, unsigned j) const -> T {
-    return this->m[i * this->size + j];   
-}
-
-template<typename T>
-auto Matrix<T>::set(unsigned i, unsigned j, T value) -> void {
-    this->m[i * this->size + j] = value;
-}
-
-template<typename T>
-auto Matrix<T>::print(const char* name) const -> void {
-    std::cout << name << " = [" << std::endl;
-    for (unsigned i = 0; i < this->size; i++) {
-        std::cout << "  ";
-        for (unsigned j = 0; j < this->size; j++) {
-            std::cout << this->get(i, j) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "]" << std::endl;
-}
-
-template<typename T>
-auto Matrix<T>::preview(const char* name) const -> void {
-    for (unsigned i = 0 ; i < std::min(10u, this->size); i++) {
-        std::cout << name << "[" << i << ",*]: ";
-        for (unsigned j = 0; j < std::min(10u, this->size); j++) {
-            std::cout << this->get(i, j) << " ";
-        }
-        std::cout << std::endl;
-    }
-}
-
-template class Matrix<double>;
 
 auto startOrResetMatrices(
     unsigned n,
