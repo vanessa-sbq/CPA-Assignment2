@@ -4,7 +4,7 @@
 #include <functional>
 #include "matrix.hpp"
 
-typedef std::function<void(Matrix<>&)> Alg;
+typedef std::function<void(Matrix<double>&)> Alg;
 
 #define POWERCAP_PATH "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj"
 
@@ -35,13 +35,13 @@ auto display_measurements(
  * @param f LU factorization algorithm
  * @param n size of vectors b, x
  */
-auto perform(const Alg &f, unsigned n) -> void;
+auto perform(const Alg& f, unsigned n) -> void;
 
 /**
  * Measures the performance of an LU factorization algorithm
  * @param f LU factorization algorithm
  * @param A matrix A in equation of type `Ax=b`
  */
-auto measure(const Alg &f, Matrix<>& A) -> void;
+auto measure(const Alg& f, Matrix<double>& A) -> void;
 
 #endif // __PERF__

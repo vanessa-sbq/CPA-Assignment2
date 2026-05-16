@@ -1,7 +1,7 @@
 #include <omp.h>
 #include "lu_factorization.hpp"
 
-auto lu_fact_sequential(Matrix<>& A) -> void {
+auto lu_fact_sequential(Matrix<double>& A) -> void {
     (void) A;
     /// Note: implementation based from this: https://www.geeksforgeeks.org/dsa/doolittle-algorithm-lu-decomposition/
     // for (int i = 0; i < n; i++) {
@@ -30,19 +30,19 @@ auto lu_fact_sequential(Matrix<>& A) -> void {
     // }
 }
 
-void lu_fact_block(Matrix<>& A, unsigned block_size) {
+void lu_fact_block(Matrix<double>& A, unsigned block_size) {
     (void) A;
     (void)block_size;
     // TODO
 }
 
-void lu_fact_omp(Matrix<>& A, unsigned num_threads) {
+void lu_fact_omp(Matrix<double>& A, unsigned num_threads) {
     (void) A;
     (void) num_threads;
     // TODO
 }
 
-void lu_fact_sycl(Matrix<>& A) {
+void lu_fact_sycl(Matrix<double>& A) {
     (void) A;
     // TODO
 }

@@ -53,7 +53,7 @@ class Matrix {
  */
 auto startOrResetMatrices(
     unsigned n,
-    Matrix<>& A,
+    Matrix<double>& A,
     double*& b,
     double*& x,
     double*& y
@@ -79,10 +79,10 @@ auto freeMatrices(
  * @param y Vector y (auxiliary vector)
  */
 auto solve(
-    Matrix<>& A,
-    const double* const b,
-    double* const x,
-    double* const y
+    Matrix<double>& A,
+    const double* b,
+    double* x,
+    double* y
 ) -> void;
 
 #endif // __MATRIX__

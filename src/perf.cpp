@@ -45,7 +45,7 @@ auto display_measurements(
     std::println("Watts: {:.6f}", watts);
 }
 
-auto perform(const Alg &f, unsigned n) -> void {
+auto perform(const Alg& f, unsigned n) -> void {
     Matrix<> A(n);
     double *b, *x, *y;
     startOrResetMatrices(n, A, b, x, y);
@@ -64,7 +64,7 @@ auto perform(const Alg &f, unsigned n) -> void {
     freeMatrices(b, x, y);
 }
 
-auto measure(const Alg &f, Matrix<>& A) -> void {
+auto measure(const Alg& f, Matrix<double>& A) -> void {
     auto e_before = read_energy_uj();
     double start = omp_get_wtime(); // Get start time
 

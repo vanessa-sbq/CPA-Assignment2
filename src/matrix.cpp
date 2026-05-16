@@ -64,7 +64,7 @@ template class Matrix<double>;
 
 auto startOrResetMatrices(
     unsigned n,
-    Matrix<>& A,
+    Matrix<double>& A,
     double*& b,
     double*& x,
     double*& y
@@ -100,29 +100,24 @@ auto freeMatrices(
 }
 
 auto solve(
-    Matrix<>& A,
+    Matrix<double>& A,
     const double* const b,
     double* const x,
     double* const y
 ) -> void {
-    // TODO: Rewrite this function
-    (void) A;
-    (void) b;
-    (void) x;
-    (void) y;
     // Forward Substitution:
-    // for (int i = 0; i < n; i++) {
-    //     double sum = 0.0;
-    //     for (int j = 0; j < i; j++)
-    //         sum += L[i * n + j] * y[j];
-    //     y[i] = b[i] - sum; // L[i*n + i] == 1.0 for Doolittle
-    // }
+    for (unsigned i = 0; i < A.size; i++) {
+        double sum = 0.0;
+        for (unsigned j = 0; j < i; j++)
+            sum += A.get(i, j) * y[j];
+        y[i] = b[i] - sum; // L[i*n + i] == 1.0 for Doolittle
+    }
 
-    // // Backward Substitution:
-    // for (int i = n - 1; i >= 0; i--) {
-    //     double sum = 0.0;
-    //     for (int j = i + 1; j < n; j++)
-    //         sum += U[i * n + j] * x[j];
-    //     x[i] = (y[i] - sum) / U[i * n + i];
-    // }
+    // Backward Substitution:
+    for (unsigned i = A.size - 1; i >= 0; i--) {
+        double sum = 0.0;
+        for (unsigned j = i + 1; j < A.size; j++)
+            sum += A.get(i, j) * x[j];
+        x[i] = (y[i] - sum) / A.get(i, i);
+    }
 }
