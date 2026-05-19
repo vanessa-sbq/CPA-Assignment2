@@ -1,8 +1,5 @@
-#include <iostream>
 #include <random>
 #include "matrix.hpp"
-
-double *A, *L, *U;
 
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -16,55 +13,62 @@ double rnd() {
     return dis(gen);
 }
 
-void print_matrix(double *M, int n, const char* name) {
-    std::cout << name << " = [" << std::endl;
-    for (int i = 0; i < n; i++) {
-        std::cout << "  ";
-        for (int j = 0; j < n; j++) {
-            std::cout << M[i*n + j] << " ";
+auto startOrResetMatrices(
+    unsigned n,
+    Matrix<double>& A,
+    double*& b,
+    double*& x,
+    double*& y
+) -> void {
+    b = new double[n];
+    x = new double[n];
+    y = new double[n];
+
+    for (unsigned i = 0; i < n; i++) {
+        for (unsigned j = 0; j < n; j++) {
+            A.set(i, j, rnd());
         }
-        std::cout << std::endl;
-    }
-    std::cout << "]" << std::endl;
-}
-
-void startOrResetMatrices(int n) {
-    A = new double[n * n];
-    L = new double[n * n];
-    U = new double[n * n];
-
-    int i, j;
-
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < n; j++) {
-            A[i * n + j] = rnd();
-            L[i * n + j] = (i == j) ? 1.0 : 0.0;
-            U[i * n + j] = 0.0;
-        }
+        b[i] = rnd();
     }
 
     // TODO: Remove (DEBUG)
-    // print_matrix(A, n, "A");
-    // print_matrix(L, n, "L");
-    // print_matrix(U, n, "U");
+    // A.print("A");
+    // std::cout << "b[*]: ";
+    // for (unsigned i = 0; i < n; i++) {
+    //     std::cout << b[i] << " ";
+    // }
+    // std::cout << std::endl;
 }
 
-void freeMatrices() {
-    delete[] A;
-    delete[] L;
-    delete[] U;
+auto freeMatrices(
+    const double* b,
+    const double* x,
+    const double* y
+) -> void {
+    delete[] b;
+    delete[] x;
+    delete[] y;
 }
 
-void show_result_matrix(int n) {
-    int j;
-    std::cout << "L[0,*]: ";
-    for (j = 0; j < std::min(10, n); j++) {
-        std::cout << L[j] << " ";
+auto solve(
+    Matrix<double>& A,
+    const double* const b,
+    double* const x,
+    double* const y
+) -> void {
+    // Forward Substitution:
+    for (unsigned i = 0; i < A.size; i++) {
+        double sum = 0.0;
+        for (unsigned j = 0; j < i; j++)
+            sum += A.get(i, j) * y[j];
+        y[i] = b[i] - sum; // L[i*n + i] == 1.0 for Doolittle
     }
-    std::cout << std::endl;
-    std::cout << "U[0,*]: ";
-    for (j = 0; j < std::min(10, n); j++) {
-        std::cout << U[j] << " ";
+
+    // Backward Substitution:
+    for (unsigned i = A.size - 1; i >= 0; i--) {
+        double sum = 0.0;
+        for (unsigned j = i + 1; j < A.size; j++)
+            sum += A.get(i, j) * x[j];
+        x[i] = (y[i] - sum) / A.get(i, i);
     }
-    std::cout << std::endl;
 }

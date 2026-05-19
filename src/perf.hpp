@@ -2,6 +2,9 @@
 #define __PERF__
 
 #include <functional>
+#include "matrix.hpp"
+
+typedef std::function<void(Matrix<double>&)> Alg;
 
 #define POWERCAP_PATH "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj"
 
@@ -9,7 +12,7 @@
  * Reads energy consumption in microjoules from the specified file path.
  * @return The energy consumption in microjoules.
  */
-long long read_energy_uj();
+auto read_energy_uj() -> long long;
 
 /**
  * Displays the execution time, GFlop/s, and energy consumption for LU factorization.
@@ -19,13 +22,26 @@ long long read_energy_uj();
  * @param e_before Energy consumption before the operation (in microjoules)
  * @param e_after Energy consumption after the operation (in microjoules)
  */
-void display_measurements(double start, double end, int n, double e_before, double e_after);
+auto display_measurements(
+    double start,
+    double end,
+    unsigned n,
+    double e_before,
+    double e_after
+) -> void;
 
 /**
- * Measures the performance of a function
- * @param f The function to be measured
- * @param n Number of rows/columns of a matrix
+ * Solves a Matrix equation (`Ax=b`) with a given LU factorization algorithm and measures its performance
+ * @param f LU factorization algorithm
+ * @param n size of vectors b, x
  */
-void measure(const std::function<void(int)> &f, int n);
+auto perform(const Alg& f, unsigned n) -> void;
+
+/**
+ * Measures the performance of an LU factorization algorithm
+ * @param f LU factorization algorithm
+ * @param A matrix A in equation of type `Ax=b`
+ */
+auto measure(const Alg& f, Matrix<double>& A) -> void;
 
 #endif // __PERF__

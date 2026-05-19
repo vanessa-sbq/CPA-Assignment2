@@ -1,16 +1,19 @@
 #include <iostream>
 #include <omp.h>
 #include "perf.hpp"
-#include "lu_factorization.hpp"
+#include "lu_fact.hpp"
+
+inline auto sequential(unsigned n) -> void;
+inline auto block(unsigned n) -> void;
+inline auto omp(unsigned n) -> void;
+inline auto sycl(unsigned n) -> void;
 
 /**
  * Main function to execute the LU factorization based on user input.
  */
-int main () {
-    int n = 0;
-    int nt = 1;
-    int block_size = 64;
-    int op = 1;
+auto main () -> int {
+    unsigned n = 0;
+    unsigned char op = 1;
 
     do {
         std::cout << std::endl;
@@ -23,7 +26,7 @@ int main () {
         std::cin >> op;
         if (op == 5) break;
 
-        std::cout << "Matrix size n (n x n) ? " << std::endl;
+        std::cout << "Matrix size n (n x n) ?" << std::endl;
         std::cout << "> ";
         std::cin >> n;
         if (n <= 0) {
@@ -32,40 +35,65 @@ int main () {
         }
 
         switch (op) {
-            case 1:
-                measure(lu_fact_sequential, n);
+            case 1: {
+                sequential(n);
                 break;
-            case 2:
-                std::cout << "Block size ? " << std::endl;
-                std::cout << "> ";
-                std::cin >> block_size;
-                if (block_size <= 0) {
-                    std::cout << "Invalid block size." << std::endl;
-                    break;
-                }
-                measure([block_size](int n) {
-                    lu_fact_block(n, block_size);
-                }, n);
+            }
+            case 2: {
+                block(n);
                 break;
-            case 3:
-                std::cout << "Number of threads? " << std::endl;
-                std::cout << "> ";
-                std::cin >> nt;
-                if (nt <= 0) {
-                    std::cout << "Invalid thread count." << std::endl;
-                    break;
-                }
-                measure([nt](int n) {
-                    omp_set_num_threads(nt);
-                    lu_fact_omp(n, nt);
-                }, n);
+            }
+            case 3: {
+                omp(n);
                 break;
-            case 4:
-                measure(lu_fact_sycl, n);
+            }
+            case 4: {
+                sycl(n);
                 break;
-            default:
+            }
+            default: {
                 std::cout << "Unknown option." << std::endl;
                 break;
+            }
         }
     } while (op != 0);
+    return 0;
 }
+
+auto sequential(unsigned n) -> void {
+    perform(lufact::sequential, n);
+}
+
+auto block(unsigned n) -> void {
+    unsigned block_size = 64;
+    std::cout << "Block size ? " << std::endl;
+    std::cout << "> ";
+    std::cin >> block_size;
+    if (block_size <= 0) {
+        std::cout << "Invalid block size." << std::endl;
+        return;
+    }
+    perform([block_size](Matrix<>& A) {
+        lufact::block(A, block_size);
+    }, n);
+}
+
+auto omp(unsigned n) -> void {
+    int nt = 1;
+    std::cout << "Number of threads? " << std::endl;
+    std::cout << "> ";
+    std::cin >> nt;
+    if (nt <= 0) {
+        std::cout << "Invalid thread count." << std::endl;
+        return;
+    }
+    perform([nt](Matrix<>& A) {
+        omp_set_num_threads(nt);
+        lufact::omp(A, nt);
+    }, n);
+}
+
+auto sycl(unsigned n) -> void {
+    perform(lufact::sycl, n);
+}
+
