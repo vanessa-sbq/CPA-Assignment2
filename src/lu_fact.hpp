@@ -21,8 +21,9 @@ namespace lufact {
      * Performs in-place parallel LU factorization of a matrix using OpenMP
      * @param A Square matrix to be factorized
      * @param num_threads Number of OpenMP threads to use for parallelization
+     * @param block_size Size of the blocks used in the block algorithm
      */
-    auto omp(Matrix<double>& A, unsigned num_threads) -> void;
+    auto omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -> void;
 
     /**
      * Performs in-place LU factorization of a matrix using SYCL
