@@ -5,7 +5,7 @@
 
 auto lufact::sequential(Matrix<double>& A) -> void {
     for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) != 0) {
+        if (A(k, k) == 0) {
             std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
             std::exit(1);
         }
@@ -24,7 +24,7 @@ auto lufact::sequential(Matrix<double>& A) -> void {
 
 auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
     for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) != 0) {
+        if (A(k, k) == 0) {
             std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
             std::exit(1);
         }
@@ -44,14 +44,16 @@ auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
         // Compute matrix A[k+1..size, k+1..size]:
         unsigned n_blocks = vertical_blocks * vertical_blocks;
         for (unsigned b = 0; b < n_blocks; b++) { // For each block
+            unsigned bi = b / vertical_blocks;
+            unsigned bj = b % vertical_blocks;
             for ( // i is the line where the block starts (cannot be < k+1 neither >= A.size)
-                unsigned i = std::max(k+1, b * block_size);
-                i < std::min(A.size, (b+1) * block_size);
+                unsigned i = std::max(k+1, bi * block_size);
+                i < std::min(A.size, (bi+1) * block_size);
                 i++
             ) {
                 for ( // j is the column where the block starts (cannot be < k+1 neither >= A.size)
-                    unsigned j = std::max(k+1, b * block_size);
-                    j < std::min(A.size, (b+1) * block_size);
+                    unsigned j = std::max(k+1, bj * block_size);
+                    j < std::min(A.size, (bj+1) * block_size);
                     j++
                 ) {
                     A(i, j) -= A(i, k) * A(k, j);
