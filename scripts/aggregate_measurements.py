@@ -4,6 +4,7 @@ import csv
 import os
 
 
+# Helper to parse a float value, treating empty strings and None as None, and ignoring invalid values
 def parse_float(value):
     if value is None:
         return None
@@ -16,12 +17,11 @@ def parse_float(value):
         return None
 
 
+# Main entry point: read the input CSV, group by parameters, average the results, and write the output CSV.
 def main():
     parser = argparse.ArgumentParser(description="Aggregate measurement CSV by averaging runs.")
-    parser.add_argument("--in", dest="in_path", default="measurements.csv",
-                        help="Input CSV path")
-    parser.add_argument("--out", dest="out_path", default="measurements_avg.csv",
-                        help="Output CSV path")
+    parser.add_argument("--in", dest="in_path", default="measurements.csv", help="Input CSV path")
+    parser.add_argument("--out", dest="out_path", default="measurements_avg.csv", help="Output CSV path")
     args = parser.parse_args()
 
     if not os.path.exists(args.in_path):
@@ -29,6 +29,7 @@ def main():
 
     groups = {}
 
+    # Read the input CSV and group by (option, implementation, n, block_size, threads), summing time_s, gflops, joules, watts, and counting runs.
     with open(args.in_path, "r", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -46,13 +47,7 @@ def main():
             joules = parse_float(row.get("joules"))
             watts = parse_float(row.get("watts"))
             if key not in groups:
-                groups[key] = {
-                    "count": 0,
-                    "time_s": 0.0,
-                    "gflops": 0.0,
-                    "joules": 0.0,
-                    "watts": 0.0,
-                }
+                groups[key] = {"count": 0, "time_s": 0.0, "gflops": 0.0, "joules": 0.0, "watts": 0.0,}
             grp = groups[key]
             if time_s is not None:
                 grp["time_s"] += time_s
@@ -82,21 +77,7 @@ def main():
 
     os.makedirs(os.path.dirname(args.out_path) or ".", exist_ok=True)
     with open(args.out_path, "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "option",
-                "implementation",
-                "n",
-                "block_size",
-                "threads",
-                "runs",
-                "time_s_avg",
-                "gflops_avg",
-                "joules_avg",
-                "watts_avg",
-            ],
-        )
+        writer = csv.DictWriter(f, fieldnames=["option", "implementation", "n", "block_size", "threads", "runs", "time_s_avg", "gflops_avg", "joules_avg", "watts_avg"],)
         writer.writeheader()
         writer.writerows(out_rows)
 

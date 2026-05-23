@@ -22,6 +22,7 @@ OPTION_CONFIGS = {
 BLOCK_SIZES = []
 THREADS_LIST = []
 
+
 # Parse the program output lines and pull out the metrics we care about.
 def parse_metrics(output):
     time_s = gflops = joules = watts = None
@@ -58,19 +59,10 @@ def build_input_sequence(option, n, block_size=None, threads=None):
 
 
 # Run the binary once with a scripted stdin sequence.
-def run_case(bin_path, option, n, block_size, threads, run_id, timeout_s):
+def run_case(bin_path, option, n, block_size, threads, run_id):
     # Build the stdin data to feed into the program based on the menu options and parameters.
     stdin_data = build_input_sequence(option, n, block_size, threads)
-    try:
-        proc = subprocess.run([bin_path], input=stdin_data, text=True, capture_output=True, timeout=timeout_s, check=False)
-    except subprocess.TimeoutExpired as exc:
-        # If the process times out, we return a special result with exit_code -1 and the captured output up to that point.
-        return {
-            "exit_code": -1,
-            "error": f"timeout after {timeout_s}s",
-            "stdout": exc.stdout or "",
-            "stderr": exc.stderr or "",
-        }
+    proc = subprocess.run([bin_path], input=stdin_data, text=True, capture_output=True, check=False)
     # For normal completion, we return the exit code, any error message (empty if exit code is 0), and the captured stdout/stderr.
     return {
         "exit_code": proc.returncode,
@@ -112,23 +104,26 @@ def load_existing_rows(path, fieldnames):
     return rows
 
 
+# Helper to sort rows in a consistent order 
+IMPLEMENTATION_ORDER = {"sequential": 1, "block": 2, "openmp": 3, "sycl": 4}
+def measurement_sort_key(row):
+    option = int(row.get("option", "0") or 0)
+    impl = row.get("implementation", "")
+    impl_order = IMPLEMENTATION_ORDER.get(impl, 99)
+    n = int(row.get("n", "0") or 0)
+    block_size = int(row.get("block_size", "0") or 0)
+    threads = int(row.get("threads", "0") or 0)
+    run = int(row.get("run", "0") or 0)
+    return (option, impl_order, n, block_size, threads, run)
+
+
 # Write a sorted snapshot so the CSV is stable and easy to scan.
 def write_rows(path, fieldnames, rows_by_key):
     tmp_path = f"{path}.tmp"
-    implementation_order = {"sequential": 1, "block": 2, "openmp": 3, "sycl": 4,}
-    def sort_key(row):
-        option = int(row.get("option", "0") or 0)
-        impl = row.get("implementation", "")
-        impl_order = implementation_order.get(impl, 99)
-        n = int(row.get("n", "0") or 0)
-        block_size = int(row.get("block_size", "0") or 0)
-        threads = int(row.get("threads", "0") or 0)
-        run = int(row.get("run", "0") or 0)
-        return (option, impl_order, n, block_size, threads, run)
     with open(tmp_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        for row in sorted(rows_by_key.values(), key=sort_key):
+        for row in sorted(rows_by_key.values(), key=measurement_sort_key):
             writer.writerow(row)
     os.replace(tmp_path, path)
 
@@ -169,7 +164,6 @@ def main():
     parser.add_argument("--threads", default="1,2,4,8,16", help="Comma-separated thread counts for option 3")
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per config")
     parser.add_argument("--options", default="1,2,3,4", help="Menu options to run, comma-separated (1-4)")
-    parser.add_argument("--timeout", type=int, default=600, help="Timeout per run (seconds)")
     args = parser.parse_args()
 
     bin_path = args.bin
@@ -223,7 +217,7 @@ def main():
                     run_counter += 1
                     run_label = build_status_message(f"Run {run_counter}", option, n, block_size, threads, r + 1)
                     print(run_label)
-                    result = run_case(bin_path, option, n, block_size, threads, run_counter, args.timeout)
+                    result = run_case(bin_path, option, n, block_size, threads, run_counter)
                     time_s, gflops, joules, watts = parse_metrics(result["stdout"])
                     row = {
                         "timestamp": datetime.now().isoformat(timespec="seconds"),

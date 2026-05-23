@@ -31,7 +31,6 @@ Common flags:
 - `--block-sizes 32,64,128` (block LU sizes)
 - `--threads 1,2,4,8,16` (OpenMP thread counts)
 - `--runs 3` (repetitions per config)
-- `--timeout 600` (seconds per run)
 
 ### Replace behavior
 

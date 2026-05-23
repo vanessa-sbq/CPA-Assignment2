@@ -32,7 +32,7 @@ auto display_measurements(
     double e_after
 ) -> void {
     double executionTime = (end - start);
-    printf("Time: %g seconds\n", executionTime);
+    printf("\nTime: %g seconds\n", executionTime);
 
     // 2/3 * n^3 flops per factorization
     double gflops = (2.0 / 3.0) * n * n * n / (executionTime * 1e9);
