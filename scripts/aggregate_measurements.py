@@ -75,9 +75,30 @@ def main():
             "watts_avg": grp["watts"] / count,
         })
 
+    # Compute the speedup and efficiency for parallel implementations compared to the sequential baseline for the same n.
+    baseline = {}
+    for row in out_rows:
+        if row["implementation"] == "sequential":
+            baseline[row["n"]] = row["time_s_avg"]
+
+    for row in out_rows:
+        t1 = baseline.get(row["n"])
+        tp = row["time_s_avg"]
+        try:
+            p = float(row["threads"])
+        except (TypeError, ValueError):
+            p = None
+
+        if t1 and tp and p and p > 0:
+            row["speedup"] = t1 / tp
+            row["efficiency"] = row["speedup"] / p
+        else:
+            row["speedup"] = None
+            row["efficiency"] = None
+
     os.makedirs(os.path.dirname(args.out_path) or ".", exist_ok=True)
     with open(args.out_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["option", "implementation", "n", "block_size", "threads", "runs", "time_s_avg", "gflops_avg", "joules_avg", "watts_avg"],)
+        writer = csv.DictWriter(f, fieldnames=["option", "implementation", "n", "block_size", "threads", "runs", "time_s_avg", "gflops_avg", "joules_avg", "watts_avg", "speedup", "efficiency"],)
         writer.writeheader()
         writer.writerows(out_rows)
 
