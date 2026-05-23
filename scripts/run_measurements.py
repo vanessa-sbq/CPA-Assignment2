@@ -11,7 +11,16 @@ GFLOPS_RE = re.compile(r"^GFlop/s:\s*([0-9.eE+-]+)")
 JOULES_RE = re.compile(r"^Joules:\s*([0-9.eE+-]+)")
 WATTS_RE = re.compile(r"^Watts:\s*([0-9.eE+-]+)")
 
+OPTION_CONFIGS = {
+    1: {"implementation": "sequential"},
+    2: {"implementation": "block"},
+    3: {"implementation": "openmp"},
+    4: {"implementation": "sycl"},
+}
+BLOCK_SIZES = []
+THREADS_LIST = []
 
+# Parse the program output lines and pull out the metrics we care about.
 def parse_metrics(output):
     time_s = gflops = joules = watts = None
     for line in output.splitlines():
@@ -36,6 +45,7 @@ def parse_metrics(output):
 
 
 def build_input_sequence(option, n, block_size=None, threads=None):
+    # Feed menu choices in order, ending with "5" to exit.
     parts = [str(option), str(n)]
     if option == 2:
         parts.append(str(block_size))
@@ -46,16 +56,10 @@ def build_input_sequence(option, n, block_size=None, threads=None):
 
 
 def run_case(bin_path, option, n, block_size, threads, run_id, timeout_s):
+    # Run the binary once with a scripted stdin sequence.
     stdin_data = build_input_sequence(option, n, block_size, threads)
     try:
-        proc = subprocess.run(
-            [bin_path],
-            input=stdin_data,
-            text=True,
-            capture_output=True,
-            timeout=timeout_s,
-            check=False,
-        )
+        proc = subprocess.run([bin_path], input=stdin_data, text=True, capture_output=True, timeout=timeout_s, check=False)
     except subprocess.TimeoutExpired as exc:
         return {
             "exit_code": -1,
@@ -89,6 +93,7 @@ def load_existing_rows(path, fieldnames):
     with open(path, "r", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Key identifies a single "cell" in the spreadsheet.
             key = (
                 row.get("option", ""),
                 row.get("implementation", ""),
@@ -102,13 +107,9 @@ def load_existing_rows(path, fieldnames):
 
 
 def write_rows(path, fieldnames, rows_by_key):
+    # Write a sorted snapshot so the CSV is stable and easy to scan.
     tmp_path = f"{path}.tmp"
-    implementation_order = {
-        "sequential": 1,
-        "block": 2,
-        "openmp": 3,
-        "sycl": 4,
-    }
+    implementation_order = {"sequential": 1, "block": 2, "openmp": 3, "sycl": 4,}
     def sort_key(row):
         option = int(row.get("option", "0") or 0)
         impl = row.get("implementation", "")
@@ -127,39 +128,58 @@ def write_rows(path, fieldnames, rows_by_key):
 
 
 def normalize_row(row):
+    # CSV wants strings; keep empty strings instead of "None".
     return {k: ("" if v is None else str(v)) for k, v in row.items()}
 
 
+def iter_option_values(opt):
+    if opt == 2:
+        return BLOCK_SIZES
+    if opt == 3:
+        return THREADS_LIST
+    return [None]
+
+
+def build_status_message(prefix, option, n, block_size, threads, run_index):
+    parts = [f"option={option}", f"n={n}"]
+    if block_size is not None:
+        parts.append(f"block_size={block_size}")
+    if threads is not None:
+        parts.append(f"threads={threads}")
+    parts.append(f"run={run_index}")
+    return f"{prefix}: " + " ".join(parts)
+
+
 def main():
+    global BLOCK_SIZES, THREADS_LIST
     parser = argparse.ArgumentParser(description="Run LU benchmarks and export CSV.")
     parser.add_argument("--bin", default="bin/Assignment2", help="Path to executable")
     parser.add_argument("--out", default="measurements.csv", help="CSV output path")
-    parser.add_argument("--sizes", default="1024,2048,3072,4096,5120,6144,7168,8192",
-                        help="Comma-separated n sizes")
-    parser.add_argument("--block-sizes", default="32,64,128",
-                        help="Comma-separated block sizes for option 2")
-    parser.add_argument("--threads", default="1,2,4,8,16",
-                        help="Comma-separated thread counts for option 3")
+    parser.add_argument("--sizes", default="1024,2048,3072,4096,5120,6144,7168,8192", help="Comma-separated n sizes")
+    parser.add_argument("--block-sizes", default="32,64,128", help="Comma-separated block sizes for option 2")
+    parser.add_argument("--threads", default="1,2,4,8,16", help="Comma-separated thread counts for option 3")
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per config")
-    parser.add_argument("--options", default="1,2,3,4",
-                        help="Menu options to run, comma-separated (1-4)")
+    parser.add_argument("--options", default="1,2,3,4", help="Menu options to run, comma-separated (1-4)")
     parser.add_argument("--timeout", type=int, default=600, help="Timeout per run (seconds)")
     args = parser.parse_args()
 
     bin_path = args.bin
     if not os.path.isfile(bin_path):
-        raise SystemExit(f"Executable not found: {bin_path}")
+        raise SystemExit(f"Executable not found: {bin_path}") # TODO: better error message
 
+    # Parse args
     sizes = parse_int_list(args.sizes)
-    block_sizes = parse_int_list(args.block_sizes)
-    threads_list = parse_int_list(args.threads)
+    BLOCK_SIZES = parse_int_list(args.block_sizes)
+    THREADS_LIST = parse_int_list(args.threads)
     options = parse_int_list(args.options)
 
+    # Create output directory if needed 
     out_path = args.out
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    
+    # Track how many runs we do and how many rows we write
     run_counter = 0
     rows_written = 0
-
     fieldnames = [
         "timestamp",
         "option",
@@ -178,32 +198,42 @@ def main():
 
     rows_by_key = load_existing_rows(out_path, fieldnames)
 
+    # Loop over all combinations of options and parameters, running the binary and collecting results.
     for option in options:
+        if option not in OPTION_CONFIGS:
+            raise SystemExit(f"Unknown option: {option}")
+        implementation = OPTION_CONFIGS[option]["implementation"]
         for n in sizes:
-            if option == 1:
+            for opt_value in iter_option_values(option):
+                block_size = opt_value if option == 2 else None
+                threads = opt_value if option == 3 else None
                 for r in range(args.runs):
                     key = (
                         str(option),
-                        "sequential",
+                        implementation,
                         str(n),
-                        "",
-                        "",
+                        "" if block_size is None else str(block_size),
+                        "" if threads is None else str(threads),
                         str(r + 1),
                     )
+
+                    # Check if we already have this result from a previous run, and skip if so.
                     if key in rows_by_key:
-                        print(f"Skip existing: option=1 n={n} run={r + 1}")
+                        print(build_status_message("Skip existing", option, n, block_size, threads, r + 1))
                         continue
+
                     run_counter += 1
-                    print(f"Run {run_counter}: option=1 n={n}")
-                    result = run_case(bin_path, option, n, None, None, run_counter, args.timeout)
+                    run_label = build_status_message(f"Run {run_counter}", option, n, block_size, threads, r + 1)
+                    print(run_label)
+                    result = run_case(bin_path, option, n, block_size, threads, run_counter, args.timeout)
                     time_s, gflops, joules, watts = parse_metrics(result["stdout"])
                     row = {
                         "timestamp": datetime.now().isoformat(timespec="seconds"),
                         "option": option,
-                        "implementation": "sequential",
+                        "implementation": implementation,
                         "n": n,
-                        "block_size": "",
-                        "threads": "",
+                        "block_size": "" if block_size is None else block_size,
+                        "threads": "" if threads is None else threads,
                         "run": r + 1,
                         "time_s": time_s,
                         "gflops": gflops,
@@ -215,117 +245,6 @@ def main():
                     rows_by_key[key] = normalize_row(row)
                     write_rows(out_path, fieldnames, rows_by_key)
                     rows_written += 1
-            elif option == 2:
-                for block_size in block_sizes:
-                    for r in range(args.runs):
-                        key = (
-                            str(option),
-                            "block",
-                            str(n),
-                            str(block_size),
-                            "",
-                            str(r + 1),
-                        )
-                        if key in rows_by_key:
-                            print(
-                                f"Skip existing: option=2 n={n} block_size={block_size} run={r + 1}"
-                            )
-                            continue
-                        run_counter += 1
-                        print(f"Run {run_counter}: option=2 n={n} block_size={block_size}")
-                        result = run_case(bin_path, option, n, block_size, None, run_counter, args.timeout)
-                        time_s, gflops, joules, watts = parse_metrics(result["stdout"])
-                        row = {
-                            "timestamp": datetime.now().isoformat(timespec="seconds"),
-                            "option": option,
-                            "implementation": "block",
-                            "n": n,
-                            "block_size": block_size,
-                            "threads": "",
-                            "run": r + 1,
-                            "time_s": time_s,
-                            "gflops": gflops,
-                            "joules": joules,
-                            "watts": watts,
-                            "exit_code": result["exit_code"],
-                            "error": result["error"],
-                        }
-                        rows_by_key[key] = normalize_row(row)
-                        write_rows(out_path, fieldnames, rows_by_key)
-                        rows_written += 1
-            elif option == 3:
-                for threads in threads_list:
-                    for r in range(args.runs):
-                        key = (
-                            str(option),
-                            "openmp",
-                            str(n),
-                            "",
-                            str(threads),
-                            str(r + 1),
-                        )
-                        if key in rows_by_key:
-                            print(f"Skip existing: option=3 n={n} threads={threads} run={r + 1}")
-                            continue
-                        run_counter += 1
-                        print(f"Run {run_counter}: option=3 n={n} threads={threads}")
-                        result = run_case(bin_path, option, n, None, threads, run_counter, args.timeout)
-                        time_s, gflops, joules, watts = parse_metrics(result["stdout"])
-                        row = {
-                            "timestamp": datetime.now().isoformat(timespec="seconds"),
-                            "option": option,
-                            "implementation": "openmp",
-                            "n": n,
-                            "block_size": "",
-                            "threads": threads,
-                            "run": r + 1,
-                            "time_s": time_s,
-                            "gflops": gflops,
-                            "joules": joules,
-                            "watts": watts,
-                            "exit_code": result["exit_code"],
-                            "error": result["error"],
-                        }
-                        rows_by_key[key] = normalize_row(row)
-                        write_rows(out_path, fieldnames, rows_by_key)
-                        rows_written += 1
-            elif option == 4:
-                for r in range(args.runs):
-                    key = (
-                        str(option),
-                        "sycl",
-                        str(n),
-                        "",
-                        "",
-                        str(r + 1),
-                    )
-                    if key in rows_by_key:
-                        print(f"Skip existing: option=4 n={n} run={r + 1}")
-                        continue
-                    run_counter += 1
-                    print(f"Run {run_counter}: option=4 n={n}")
-                    result = run_case(bin_path, option, n, None, None, run_counter, args.timeout)
-                    time_s, gflops, joules, watts = parse_metrics(result["stdout"])
-                    row = {
-                        "timestamp": datetime.now().isoformat(timespec="seconds"),
-                        "option": option,
-                        "implementation": "sycl",
-                        "n": n,
-                        "block_size": "",
-                        "threads": "",
-                        "run": r + 1,
-                        "time_s": time_s,
-                        "gflops": gflops,
-                        "joules": joules,
-                        "watts": watts,
-                        "exit_code": result["exit_code"],
-                        "error": result["error"],
-                    }
-                    rows_by_key[key] = normalize_row(row)
-                    write_rows(out_path, fieldnames, rows_by_key)
-                    rows_written += 1
-            else:
-                raise SystemExit(f"Unknown option: {option}")
 
     print(f"Wrote {rows_written} rows to {out_path}")
 
