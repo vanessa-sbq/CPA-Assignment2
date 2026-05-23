@@ -6,11 +6,13 @@ import re
 import subprocess
 from datetime import datetime
 
+# Regexes to pull out the metrics from the program output
 TIME_RE = re.compile(r"^Time:\s*([0-9.eE+-]+)\s*seconds")
 GFLOPS_RE = re.compile(r"^GFlop/s:\s*([0-9.eE+-]+)")
 JOULES_RE = re.compile(r"^Joules:\s*([0-9.eE+-]+)")
 WATTS_RE = re.compile(r"^Watts:\s*([0-9.eE+-]+)")
 
+# Map menu options to implementation names for easier CSV readability.
 OPTION_CONFIGS = {
     1: {"implementation": "sequential"},
     2: {"implementation": "block"},
@@ -44,8 +46,8 @@ def parse_metrics(output):
     return time_s, gflops, joules, watts
 
 
+# Feed menu choices in order, ending with "5" to exit.
 def build_input_sequence(option, n, block_size=None, threads=None):
-    # Feed menu choices in order, ending with "5" to exit.
     parts = [str(option), str(n)]
     if option == 2:
         parts.append(str(block_size))
@@ -55,19 +57,21 @@ def build_input_sequence(option, n, block_size=None, threads=None):
     return "\n".join(parts) + "\n"
 
 
+# Run the binary once with a scripted stdin sequence.
 def run_case(bin_path, option, n, block_size, threads, run_id, timeout_s):
-    # Run the binary once with a scripted stdin sequence.
+    # Build the stdin data to feed into the program based on the menu options and parameters.
     stdin_data = build_input_sequence(option, n, block_size, threads)
     try:
         proc = subprocess.run([bin_path], input=stdin_data, text=True, capture_output=True, timeout=timeout_s, check=False)
     except subprocess.TimeoutExpired as exc:
+        # If the process times out, we return a special result with exit_code -1 and the captured output up to that point.
         return {
             "exit_code": -1,
             "error": f"timeout after {timeout_s}s",
             "stdout": exc.stdout or "",
             "stderr": exc.stderr or "",
         }
-
+    # For normal completion, we return the exit code, any error message (empty if exit code is 0), and the captured stdout/stderr.
     return {
         "exit_code": proc.returncode,
         "error": "" if proc.returncode == 0 else (proc.stderr.strip() or "non-zero exit"),
@@ -76,6 +80,7 @@ def run_case(bin_path, option, n, block_size, threads, run_id, timeout_s):
     }
 
 
+# Utility to parse a comma-separated list of integers from a string argument.
 def parse_int_list(value):
     items = []
     for part in value.split(","):
@@ -86,6 +91,7 @@ def parse_int_list(value):
     return items
 
 
+# Load existing rows from the CSV if it exists, so we can skip already-completed runs and append new results without losing old ones.
 def load_existing_rows(path, fieldnames):
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         return {}
@@ -106,8 +112,8 @@ def load_existing_rows(path, fieldnames):
     return rows
 
 
+# Write a sorted snapshot so the CSV is stable and easy to scan.
 def write_rows(path, fieldnames, rows_by_key):
-    # Write a sorted snapshot so the CSV is stable and easy to scan.
     tmp_path = f"{path}.tmp"
     implementation_order = {"sequential": 1, "block": 2, "openmp": 3, "sycl": 4,}
     def sort_key(row):
@@ -127,11 +133,12 @@ def write_rows(path, fieldnames, rows_by_key):
     os.replace(tmp_path, path)
 
 
+# Normalize a row dictionary by converting all values to strings and replacing None with empty strings, since CSV wants strings
 def normalize_row(row):
-    # CSV wants strings; keep empty strings instead of "None".
     return {k: ("" if v is None else str(v)) for k, v in row.items()}
 
 
+# Some options have multiple values to iterate over, returns a list of those
 def iter_option_values(opt):
     if opt == 2:
         return BLOCK_SIZES
@@ -140,6 +147,7 @@ def iter_option_values(opt):
     return [None]
 
 
+# Debug helper to build a consistent status message for each run, showing the parameters being used.
 def build_status_message(prefix, option, n, block_size, threads, run_index):
     parts = [f"option={option}", f"n={n}"]
     if block_size is not None:
@@ -150,6 +158,7 @@ def build_status_message(prefix, option, n, block_size, threads, run_index):
     return f"{prefix}: " + " ".join(parts)
 
 
+# Main entry point: parse arguments, loop over all combinations of options and parameters, run the binary, collect results, and write to CSV.
 def main():
     global BLOCK_SIZES, THREADS_LIST
     parser = argparse.ArgumentParser(description="Run LU benchmarks and export CSV.")
@@ -165,7 +174,7 @@ def main():
 
     bin_path = args.bin
     if not os.path.isfile(bin_path):
-        raise SystemExit(f"Executable not found: {bin_path}") # TODO: better error message
+        raise SystemExit(f"Executable not found: {bin_path}") 
 
     # Parse args
     sizes = parse_int_list(args.sizes)
@@ -180,28 +189,17 @@ def main():
     # Track how many runs we do and how many rows we write
     run_counter = 0
     rows_written = 0
-    fieldnames = [
-        "timestamp",
-        "option",
-        "implementation",
-        "n",
-        "block_size",
-        "threads",
-        "run",
-        "time_s",
-        "gflops",
-        "joules",
-        "watts",
-        "exit_code",
-        "error",
-    ]
+    fieldnames = ["timestamp", "option", "implementation", "n", "block_size", "threads", "run", "time_s", "gflops", "joules", "watts", "exit_code", "error"]
 
+    # Load existing rows so we can skip already-completed runs and append new results without losing old ones.
     rows_by_key = load_existing_rows(out_path, fieldnames)
 
     # Loop over all combinations of options and parameters, running the binary and collecting results.
     for option in options:
+        # Validate the option and get the implementation name for reporting.
         if option not in OPTION_CONFIGS:
             raise SystemExit(f"Unknown option: {option}")
+
         implementation = OPTION_CONFIGS[option]["implementation"]
         for n in sizes:
             for opt_value in iter_option_values(option):
