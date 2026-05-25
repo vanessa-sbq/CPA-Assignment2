@@ -6,11 +6,11 @@
 template<typename T = double>
 class Matrix {
     public:
-    explicit Matrix<T>(unsigned size):
+    explicit Matrix(unsigned size):
         size(size),
         m(new T[size * size]) {}
 
-    ~Matrix<T>() {
+    ~Matrix() {
         delete [] m;
     }
 

@@ -4,6 +4,7 @@
 #include "lu_fact.hpp"
 
 auto lufact::sequential(Matrix<double>& A) -> void {
+    Matrix<unsigned> count(A.size);
     for (unsigned k = 0; k < A.size - 1; k++) {
         if (A(k, k) == 0) {
             std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
