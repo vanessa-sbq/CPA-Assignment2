@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <omp.h>
+#include <sycl/sycl.hpp>
 #include "lu_fact.hpp"
 
 auto lufact::sequential(Matrix<double>& A) -> void {

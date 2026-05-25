@@ -9,18 +9,10 @@ This project contains the implementations for LU factorization in four variants:
 
 ## Build
 
-### With Makefile
+Configure the project with CMake (replace `your-c++-sycl-compiler` with your SYCL compiler (e.g. `acpp` ([AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)) or `icpx` ([Intel oneAPI DPC++/C++](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html)))):
 
 ```bash
-make
-```
-
-### With CMake
-
-Configure the project with CMake:
-
-```bash
-cmake -DCMAKE_BUILD_TYPE:STRING=Release --no-warn-unused-cli -S ./src -B ./build
+cmake -DCMAKE_BUILD_TYPE:STRING=Release --no-warn-unused-cli -S ./src -B ./build -DCMAKE_CXX_COMPILER=your-sycl-compiler
 ```
 
 Build:
@@ -32,10 +24,8 @@ cmake --build ./build --config Release --target all --
 ## Run
 
 ```bash
-./Assignment2
+bin/Assignment2
 ```
-
-> **Note:** If you built with CMake, run the executable from the `bin` directory.
 
 The program shows a menu where you can pick the implementation and enter the matrix size $n$ (for $n \times n$).
 For block LU you will be prompted for the block size, and for OpenMP you will be prompted for the thread count.
