@@ -13,7 +13,7 @@ inline auto sycl(unsigned n) -> void;
  */
 auto main () -> int {
     unsigned n = 0;
-    unsigned char op = 1;
+    int op = 1;
 
     do {
         std::cout << std::endl;

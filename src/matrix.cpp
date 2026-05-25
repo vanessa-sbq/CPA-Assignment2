@@ -65,7 +65,7 @@ auto solve(
     }
 
     // Backward Substitution:
-    for (unsigned i = A.size - 1; i >= 0; i--) {
+    for (unsigned i = A.size; i-- > 0;) {
         double sum = 0.0;
         for (unsigned j = i + 1; j < A.size; j++)
             sum += A.get(i, j) * x[j];
