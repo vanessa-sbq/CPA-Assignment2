@@ -44,12 +44,20 @@ auto display_measurements(
     printf("Watts: %.6f\n", watts);
 }
 
-auto perform(const Alg& f, unsigned n) -> void {
+auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
+    (void)q;
     Matrix<> A(n);
     double *b, *x, *y;
     startOrResetMatrices(n, A, b, x, y);
-    
-    measure(f, A);
+
+    if (q) {
+        Matrix<double> A_device(A.size, q);
+        q->memcpy(A_device.get_buf(), A.get_buf(), A.size * A.size * sizeof(double)).wait();
+        measure(f, A_device);
+        q->memcpy(A.get_buf(), A_device.get_buf(), A.size * A.size * sizeof(double)).wait();
+    } else {
+        measure(f, A);
+    }
     
     solve(A, b, x, y);
     

@@ -1,6 +1,7 @@
 #ifndef __PERF__
 #define __PERF__
 
+#include <sycl/sycl.hpp>
 #include <functional>
 #include "matrix.hpp"
 
@@ -35,7 +36,7 @@ auto display_measurements(
  * @param f LU factorization algorithm
  * @param n size of vectors b, x
  */
-auto perform(const Alg& f, unsigned n) -> void;
+auto perform(const Alg& f, unsigned n, sycl::queue *q = nullptr) -> void;
 
 /**
  * Measures the performance of an LU factorization algorithm

@@ -11,6 +11,8 @@ inline auto omp(unsigned n) -> void;
 inline auto sycl(unsigned n) -> void;
 }
 
+static sycl::queue q;
+
 /**
  * Main function to execute the LU factorization based on user input.
  */
@@ -107,7 +109,17 @@ auto omp(unsigned n) -> void {
 }
 
 auto sycl(unsigned n) -> void {
-    perform(lufact::sycl, n);
+    unsigned block_size = 64;
+    std::cout << "Block size ? " << std::endl;
+    std::cout << "> ";
+    std::cin >> block_size;
+    if (block_size <= 0) {
+        std::cout << "Invalid block size." << std::endl;
+        return;
+    }
+    perform([block_size](Matrix<>& A) {
+        lufact::sycl(A, block_size, q);
+    }, n, &q);
 }
 
 }
