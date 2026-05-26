@@ -11,8 +11,6 @@ inline auto omp(unsigned n) -> void;
 inline auto sycl(unsigned n) -> void;
 }
 
-static sycl::queue q;
-
 /**
  * Main function to execute the LU factorization based on user input.
  */
@@ -117,7 +115,25 @@ auto sycl(unsigned n) -> void {
         std::cout << "Invalid block size." << std::endl;
         return;
     }
-    perform([block_size](Matrix<>& A) {
+    unsigned devid = 0;
+    std::cout << "Select device" << std::endl;
+    const auto devices = sycl::device::get_devices();
+    unsigned i = 1;
+    for (const auto &device : devices) {
+        std::cout << i << ". " << device.get_info<sycl::info::device::name>() << std::endl;
+        ++i;
+    }
+    std::cout << "> ";
+    std::cin >> devid;
+    if (devid < 1 || devid > devices.size()) {
+        std::cout << "Invalid option." << std::endl;
+        return;
+    }
+
+    sycl::queue q {devices[devid-1]};
+    std::cout << "Will use " << q.get_device().get_info<sycl::info::device::name>() << std::endl;
+
+    perform([block_size, &q](Matrix<>& A) {
         lufact::sycl(A, block_size, q);
     }, n, &q);
 }
