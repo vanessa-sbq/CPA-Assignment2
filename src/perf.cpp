@@ -50,18 +50,38 @@ auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
     double *b, *x, *y;
     startOrResetMatrices(n, A, b, x, y);
 
+    A.preview("A");
+    std::cout << "b[*]: ";
+    for (unsigned i = 0; i < std::min(10u, n); i++) {
+        std::cout << b[i] << " ";
+    }
+    std::cout << std::endl;
+
     if (q) {
         Matrix<double> A_device(A.size, q);
+        double start_host2dev = omp_get_wtime();
         q->memcpy(A_device.get_buf(), A.get_buf(), A.size * A.size * sizeof(double)).wait();
+        double host2dev_time = omp_get_wtime() - start_host2dev;
+
         measure(f, A_device);
+
+        double start_dev2host = omp_get_wtime();
         q->memcpy(A.get_buf(), A_device.get_buf(), A.size * A.size * sizeof(double)).wait();
+        double dev2host_time = omp_get_wtime() - start_dev2host;
+        
+        printf(
+            "Memory transfer overheads:\n"
+            "Host to device: %.3gs\n"
+            "Device to host: %.3gs\n"
+            , host2dev_time, dev2host_time
+        );
     } else {
         measure(f, A);
     }
     
     solve(A, b, x, y);
     
-    A.preview("A");
+    A.preview("LU");
     std::cout << "x[*]: ";
     for (unsigned i = 0; i < std::min(10u, n); i++) {
         std::cout << x[i] << " ";

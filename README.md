@@ -7,24 +7,40 @@ This project contains the implementations for LU factorization in four variants:
 3. Shared-memory OpenMP LU
 4. SYCL LU
 
-## Build
+## Running
 
-Configure the project with CMake (replace `your-c++-sycl-compiler` with your SYCL compiler (e.g. `acpp` ([AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)) or `icpx` ([Intel oneAPI DPC++/C++](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html)))):
+### 1. Configure
+
+Configure the project with CMake (replace `your-sycl-compiler` with your SYCL compiler (e.g. `acpp` ([AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)) or `icpx` ([Intel oneAPI DPC++/C++](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html)))):
 
 ```bash
 cmake -DCMAKE_BUILD_TYPE:STRING=Release --no-warn-unused-cli -S ./src -B ./build -DCMAKE_CXX_COMPILER=your-sycl-compiler
 ```
 
-Build:
+### 2. Build
+
+#### With CMake:
 
 ```bash
 cmake --build ./build --config Release --target all --
 ```
 
-## Run
+#### With Makefile (still requires CMake configuration):
+
+```bash
+make build
+```
+
+### 3. Run
 
 ```bash
 bin/Assignment2
+```
+
+Or:
+
+```bash
+make run
 ```
 
 The program shows a menu where you can pick the implementation and enter the matrix size $n$ (for $n \times n$).

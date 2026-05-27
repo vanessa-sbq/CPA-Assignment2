@@ -1,16 +1,16 @@
 #include <algorithm>
-#include <iostream>
 #include <omp.h>
+#include <stdexcept>
 #include <sycl/sycl.hpp>
 #include "lu_fact.hpp"
 
 auto lufact::sequential(Matrix<double>& A) -> void {
     Matrix<unsigned> count(A.size);
     for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) == 0) {
-            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
-            std::exit(1);
-        }
+        // if (A(k, k) == 0) {
+        //     std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+        //     std::exit(1);
+        // }
 
         for (unsigned i = k+1; i < A.size; i++) {
             A(i, k) /= A(k, k);
@@ -26,10 +26,10 @@ auto lufact::sequential(Matrix<double>& A) -> void {
 
 auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
     for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) == 0) {
-            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
-            std::exit(1);
-        }
+        // if (A(k, k) == 0) {
+        //     std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+        //     std::exit(1);
+        // }
 
         // Compute column k:
         unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
@@ -68,10 +68,10 @@ auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
 auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -> void {
     
     for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) == 0) {
-            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
-            std::exit(1);
-        }
+        // if (A(k, k) == 0) {
+        //     std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+        //     std::exit(1);
+        // }
 
         // Compute column k:
         unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
@@ -109,14 +109,14 @@ auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -
     }
 }
 
-auto lufact::sycl(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
+
+
+auto lufact::sycl_dumb(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
     const unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
     const unsigned n_blocks = vertical_blocks * vertical_blocks;
 
     double * const buf = A.get_buf();
     unsigned const size = A.size;
-
-    (void)n_blocks, (void)vertical_blocks, (void)buf, (void)size;
 
     for (unsigned k = 0; k < A.size - 1; k++) {
         // if (A(k, k) == 0) {
@@ -134,7 +134,7 @@ auto lufact::sycl(Matrix<double>& A, unsigned const block_size, sycl::queue &q) 
                 buf[i*size + k] /= buf[k*size + k];
                 // A(i, k) /= A(k, k);
             }
-        }).wait();
+        }).wait_and_throw();
 
         q.parallel_for(sycl::range<1>(n_blocks), [buf, vertical_blocks, block_size, size, k](sycl::id<1> id) {
             unsigned b = id;
@@ -154,7 +154,56 @@ auto lufact::sycl(Matrix<double>& A, unsigned const block_size, sycl::queue &q) 
                     // A(i, j) -= A(i, k) * A(k, j);
                 }
             }
-        }).wait();
+        }).wait_and_throw();
     }
-    q.wait();
+    q.wait_and_throw();
+}
+
+
+
+auto lufact::sycl_basic(Matrix<double>& A, [[maybe_unused]] unsigned const block_size, sycl::queue &q) -> void {
+    double * const buf = A.get_buf();
+    unsigned const size = A.size;
+
+    for (unsigned k = 0; k < A.size - 1; k++) {
+        q.parallel_for(sycl::range<1>(size-k-1), [buf, size, k](sycl::id<1> i) {
+            i += k+1;
+            buf[i*size + k] /= buf[k*size + k];
+        }).wait_and_throw();
+
+        q.parallel_for(sycl::range<2>(size-k-1, size-k-1), [buf, size, k](sycl::id<2> id) {
+            unsigned i = k+1+id[0], j = k+1+id[1];
+            buf[i*size + j] -= buf[i*size + k] * buf[k*size + j];
+        }).wait_and_throw();
+    }
+}
+
+
+
+auto lufact::sycl_block(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
+    if (A.size % block_size != 0) // make our job easier
+        throw std::invalid_argument("block_size must be a multiple of size");
+
+    const unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
+    [[maybe_unused]] const unsigned n_blocks = vertical_blocks * vertical_blocks;
+
+    double * const buf = A.get_buf();
+    unsigned const size = A.size;
+
+    for (unsigned k = 0; k < A.size - 1; k++) {
+        q.parallel_for(sycl::range<1>(size-k-1), [buf, size, k](sycl::id<1> i) {
+            i += k+1;
+            buf[i*size + k] /= buf[k*size + k];
+        }).wait_and_throw();
+
+        q.parallel_for(sycl::nd_range<2>(
+            sycl::range<2>(size, size),
+            sycl::range<2>(block_size, block_size)
+        ), [buf, size, k](sycl::nd_item<2> id) {
+            unsigned i = id.get_global_id(0), j = id.get_global_id(1);
+            if (i < k+1 || j < k+1)
+                return;
+            buf[i*size + j] -= buf[i*size + k] * buf[k*size + j];
+        }).wait_and_throw();
+    }
 }
