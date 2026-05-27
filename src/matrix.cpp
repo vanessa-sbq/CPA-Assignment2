@@ -1,8 +1,9 @@
 #include <random>
 #include "matrix.hpp"
 
-std::random_device rd;
-std::mt19937 gen(rd());
+// std::random_device rd;
+// std::mt19937 gen(rd());
+std::mt19937 gen(69420);
 std::uniform_real_distribution<> dis(0.0, 10.0); // TODO: Consider using a larger range
 
 /**

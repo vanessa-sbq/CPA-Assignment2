@@ -8,3 +8,4 @@ cpa
 .clang-tidy
 measurements.csv
 measurements_avg.csv
+.clangd

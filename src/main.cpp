@@ -3,10 +3,13 @@
 #include "perf.hpp"
 #include "lu_fact.hpp"
 
+// avoid naming collisions
+namespace options {
 inline auto sequential(unsigned n) -> void;
 inline auto block(unsigned n) -> void;
 inline auto omp(unsigned n) -> void;
 inline auto sycl(unsigned n) -> void;
+}
 
 /**
  * Main function to execute the LU factorization based on user input.
@@ -36,19 +39,19 @@ auto main () -> int {
 
         switch (op) {
             case 1: {
-                sequential(n);
+                options::sequential(n);
                 break;
             }
             case 2: {
-                block(n);
+                options::block(n);
                 break;
             }
             case 3: {
-                omp(n);
+                options::omp(n);
                 break;
             }
             case 4: {
-                sycl(n);
+                options::sycl(n);
                 break;
             }
             default: {
@@ -59,6 +62,8 @@ auto main () -> int {
     } while (op != 0);
     return 0;
 }
+
+namespace options {
 
 auto sequential(unsigned n) -> void {
     perform(lufact::sequential, n);
@@ -105,3 +110,4 @@ auto sycl(unsigned n) -> void {
     perform(lufact::sycl, n);
 }
 
+}
