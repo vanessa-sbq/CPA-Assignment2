@@ -5,11 +5,6 @@
 #include "lu_fact.hpp"
 
 
-/*
- * Performs the LU factorization of a matrix A using the sequential algorithm.
- * The result is stored in the same matrix A, where the lower triangular part contains L (with 1s in the diagonal) and the upper triangular part contains U.
- * @param A The matrix to be factored. It will be modified to contain the LU decomposition.
-*/
 auto lufact::sequential(Matrix<double>& A) -> void {
     Matrix<unsigned> count(A.size);
     for (unsigned k = 0; k < A.size - 1; k++) {
@@ -31,12 +26,6 @@ auto lufact::sequential(Matrix<double>& A) -> void {
 }
 
 
-/*
- * Performs the LU factorization of a matrix A using the block algorithm.
- * The result is stored in the same matrix A, where the lower triangular part contains L (with 1s in the diagonal) and the upper triangular part contains U.
- * @param A The matrix to be factored. It will be modified to contain the LU decomposition.
- * @param block_size The size of the blocks to be used in the factorization. It should be a positive integer less than or equal to A.size.
-*/
 auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
     for (unsigned k = 0; k < A.size - 1; k++) {
         if (A(k, k) == 0) {
@@ -79,13 +68,6 @@ auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
 }
 
 
-/*
- * Performs the LU factorization of a matrix A using the OpenMP parallel algorithm.
- * The result is stored in the same matrix A, where the lower triangular part contains L (with 1s in the diagonal) and the upper triangular part contains U.
- * @param A The matrix to be factored. It will be modified to contain the LU decomposition.
- * @param num_threads The number of threads to use for parallel execution.
- * @param block_size The size of the blocks to be used in the factorization. It should be a positive integer less than or equal to A.size.
- */
 auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -> void {
     for (unsigned k = 0; k < A.size - 1; k++) {
         if (A(k, k) == 0) {
@@ -135,13 +117,6 @@ auto lufact::sycl(Matrix<double>& A) -> void {
 }
 
 
-/*
- * Verifies the correctness of the LU decomposition by checking if L * U equals the original matrix.
- * @param A_lu The LU decomposed matrix.
- * @param A_original The original matrix.
- * @param tol The tolerance for the verification.
- * @return True if the verification passes, false otherwise.
- */
 auto lufact::debug_verify(const Matrix<double>& A_lu, const Matrix<double>& A_original, double tol) -> bool {
     // If the sizes differ, we cannot compare the matrices, so we consider it a verification failure
     if (A_lu.size != A_original.size) {

@@ -25,13 +25,8 @@ auto read_energy_uj() -> long long {
     return val;
 }
 
-auto display_measurements(
-    double start,
-    double end,
-    unsigned n,
-    double e_before,
-    double e_after
-) -> void {
+
+auto display_measurements(double start, double end, unsigned n, double e_before, double e_after) -> void {
     double executionTime = (end - start);
     printf("\nTime: %g seconds\n", executionTime);
 
@@ -44,6 +39,7 @@ auto display_measurements(
     printf("Joules: %.6f\n", joules);
     printf("Watts: %.6f\n", watts);
 }
+
 
 auto perform(const Alg& f, unsigned n) -> void {
     Matrix<> A(n);
@@ -73,6 +69,7 @@ auto perform(const Alg& f, unsigned n) -> void {
 
     freeMatrices(b, x, y);
 }
+
 
 auto measure(const Alg& f, Matrix<double>& A) -> void {
     auto e_before = read_energy_uj();

@@ -18,6 +18,7 @@ auto main () -> int {
     unsigned n = 0;
     int op = 1;
 
+    // Menu loop to select the LU factorization method and matrix size
     do {
         std::cout << std::endl;
         std::cout << "1. Sequential LU" << std::endl;
@@ -64,6 +65,7 @@ auto main () -> int {
 }
 
 
+// Each of these functions performs the corresponding LU factorization method on a matrix of size n x n and measures its performance using the "perform" function defined in "perf.cpp".
 namespace options {
 
     auto sequential(unsigned n) -> void {
