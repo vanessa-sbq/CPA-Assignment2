@@ -30,6 +30,15 @@ namespace lufact {
      * @param A Square matrix to be factorized
      */
     auto sycl(Matrix<double>& A) -> void;
+
+    /**
+     * Debug helper to verify LU factorization by checking that L*U ~= A_original
+     * @param A_lu Matrix containing in-place LU (Doolittle: unit diagonal in L)
+     * @param A_original Original matrix before factorization
+     * @param tol Absolute tolerance for the maximum error
+     * @return true if max absolute error <= tol
+     */
+    auto debug_verify(const Matrix<double>& A_lu, const Matrix<double>& A_original, double tol = 1e-9) -> bool;
 }
 
 #endif // __LU_FACTORIZATION__

@@ -21,6 +21,7 @@ OPTION_CONFIGS = {
 }
 BLOCK_SIZES = []
 THREADS_LIST = []
+PARALLEL_BLOCK_SIZE = 128
 
 
 # Parse the program output lines and pull out the metrics we care about.
@@ -54,6 +55,7 @@ def build_input_sequence(option, n, block_size=None, threads=None):
         parts.append(str(block_size))
     if option == 3:
         parts.append(str(threads))
+        parts.append(str(PARALLEL_BLOCK_SIZE)) # TODO: Don't pass the block size hardcoded here
     parts.append("5")
     return "\n".join(parts) + "\n"
 
@@ -161,7 +163,7 @@ def main():
     parser.add_argument("--out", default="measurements.csv", help="CSV output path")
     parser.add_argument("--sizes", default="1024,2048,3072,4096,5120,6144,7168,8192", help="Comma-separated n sizes")
     parser.add_argument("--block-sizes", default="32,64,128", help="Comma-separated block sizes for option 2")
-    parser.add_argument("--threads", default="1,2,4,8,16", help="Comma-separated thread counts for option 3")
+    parser.add_argument("--threads", default="4,8,16", help="Comma-separated thread counts for option 3")
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per config")
     parser.add_argument("--options", default="1,2,3,4", help="Menu options to run, comma-separated (1-4)")
     args = parser.parse_args()

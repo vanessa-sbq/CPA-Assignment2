@@ -84,13 +84,7 @@ class Matrix {
  * @param x Pointer to vector x
  * @param y Pointer to vector y
  */
-auto startOrResetMatrices(
-    unsigned n,
-    Matrix<double>& A,
-    double*& b,
-    double*& x,
-    double*& y
-) -> void;
+auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y) -> void;
 
 /**
  * Frees the matrices.
@@ -98,24 +92,15 @@ auto startOrResetMatrices(
  * @param x Pointer to vector x
  * @param y Pointer to vector y
  */
-auto freeMatrices(
-    const double* b,
-    const double* x,
-    const double* y
-) -> void;
+auto freeMatrices(const double* b, const double* x, const double* y) -> void;
 
 /**
- * Solves a equation of type `Ax=b` using LU factorization
+ * Solves a equation of type "Ax=b" using LU factorization
  * @param A Matrix A
  * @param b Vector b
  * @param x Vector x (solution)
  * @param y Vector y (auxiliary vector)
  */
-auto solve(
-    Matrix<double>& A,
-    const double* b,
-    double* x,
-    double* y
-) -> void;
+auto solve(Matrix<double>& A, const double* b, double* x, double* y) -> void;
 
 #endif // __MATRIX__

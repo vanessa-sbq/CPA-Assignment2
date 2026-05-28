@@ -14,13 +14,8 @@ double rnd() {
     return dis(gen);
 }
 
-auto startOrResetMatrices(
-    unsigned n,
-    Matrix<double>& A,
-    double*& b,
-    double*& x,
-    double*& y
-) -> void {
+
+auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y) -> void {
     b = new double[n];
     x = new double[n];
     y = new double[n];
@@ -31,32 +26,17 @@ auto startOrResetMatrices(
         }
         b[i] = rnd();
     }
-
-    // TODO: Remove (DEBUG)
-    // A.print("A");
-    // std::cout << "b[*]: ";
-    // for (unsigned i = 0; i < n; i++) {
-    //     std::cout << b[i] << " ";
-    // }
-    // std::cout << std::endl;
 }
 
-auto freeMatrices(
-    const double* b,
-    const double* x,
-    const double* y
-) -> void {
+
+auto freeMatrices(const double* b, const double* x, const double* y) -> void {
     delete[] b;
     delete[] x;
     delete[] y;
 }
 
-auto solve(
-    Matrix<double>& A,
-    const double* const b,
-    double* const x,
-    double* const y
-) -> void {
+
+auto solve(Matrix<double>& A, const double* const b, double* const x, double* const y) -> void {
     // Forward Substitution:
     for (unsigned i = 0; i < A.size; i++) {
         double sum = 0.0;
