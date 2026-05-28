@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <omp.h>
+#include "lu_fact.hpp"
 #include "perf.hpp"
 
 auto read_energy_uj() -> long long {
@@ -46,10 +47,20 @@ auto display_measurements(
 
 auto perform(const Alg& f, unsigned n) -> void {
     Matrix<> A(n);
+    Matrix<> A_original(n);
     double *b, *x, *y;
     startOrResetMatrices(n, A, b, x, y);
+
+    for (unsigned i = 0; i < n; i++) {
+        for (unsigned j = 0; j < n; j++) {
+            A_original.set(i, j, A.get(i, j));
+        }
+    }
     
     measure(f, A);
+
+    // Uncomment to verify correctness of the LU factorization
+    //lufact::debug_verify(A, A_original, 1e-6);
     
     solve(A, b, x, y);
     
@@ -67,16 +78,11 @@ auto measure(const Alg& f, Matrix<double>& A) -> void {
     auto e_before = read_energy_uj();
     double start = omp_get_wtime(); // Get start time
 
+    // Perform the factorization
     f(A);
 
     double end = omp_get_wtime(); // Get end time
     auto e_after = read_energy_uj();
 
-    display_measurements(
-        start,
-        end,
-        A.size,
-        (double) e_before,
-        (double) e_after
-    );
+    display_measurements(start, end, A.size, (double) e_before, (double) e_after);
 }

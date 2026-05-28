@@ -63,51 +63,52 @@ auto main () -> int {
     return 0;
 }
 
+
 namespace options {
 
-auto sequential(unsigned n) -> void {
-    perform(lufact::sequential, n);
-}
-
-auto block(unsigned n) -> void {
-    unsigned block_size = 64;
-    std::cout << "Block size ? " << std::endl;
-    std::cout << "> ";
-    std::cin >> block_size;
-    if (block_size <= 0) {
-        std::cout << "Invalid block size." << std::endl;
-        return;
+    auto sequential(unsigned n) -> void {
+        perform(lufact::sequential, n);
     }
-    perform([block_size](Matrix<>& A) {
-        lufact::block(A, block_size);
-    }, n);
-}
 
-auto omp(unsigned n) -> void {
-    int nt = 1;
-    std::cout << "Number of threads? " << std::endl;
-    std::cout << "> ";
-    std::cin >> nt;
-    if (nt <= 0) {
-        std::cout << "Invalid thread count." << std::endl;
-        return;
+    auto block(unsigned n) -> void {
+        unsigned block_size = 64;
+        std::cout << "Block size ? " << std::endl;
+        std::cout << "> ";
+        std::cin >> block_size;
+        if (block_size <= 0) {
+            std::cout << "Invalid block size." << std::endl;
+            return;
+        }
+        perform([block_size](Matrix<>& A) {
+            lufact::block(A, block_size);
+        }, n);
     }
-    unsigned block_size = 64;
-    std::cout << "Block size ? " << std::endl;
-    std::cout << "> ";
-    std::cin >> block_size;
-    if (block_size <= 0) {
-        std::cout << "Invalid block size." << std::endl;
-        return;
-    }
-    perform([nt, block_size](Matrix<>& A) {
-        omp_set_num_threads(nt);
-        lufact::omp(A, nt, block_size);
-    }, n);
-}
 
-auto sycl(unsigned n) -> void {
-    perform(lufact::sycl, n);
-}
+    auto omp(unsigned n) -> void {
+        int nt = 1;
+        std::cout << "Number of threads? " << std::endl;
+        std::cout << "> ";
+        std::cin >> nt;
+        if (nt <= 0) {
+            std::cout << "Invalid thread count." << std::endl;
+            return;
+        }
+        unsigned block_size = 64;
+        std::cout << "Block size ? " << std::endl;
+        std::cout << "> ";
+        std::cin >> block_size;
+        if (block_size <= 0) {
+            std::cout << "Invalid block size." << std::endl;
+            return;
+        }
+        perform([nt, block_size](Matrix<>& A) {
+            omp_set_num_threads(nt);
+            lufact::omp(A, nt, block_size);
+        }, n);
+    }
+
+    auto sycl(unsigned n) -> void {
+        perform(lufact::sycl, n);
+    }
 
 }
