@@ -134,7 +134,7 @@ auto lufact::sycl_dumb(Matrix<double>& A, unsigned const block_size, sycl::queue
                 buf[i*size + k] /= buf[k*size + k];
                 // A(i, k) /= A(k, k);
             }
-        }).wait_and_throw();
+        });
 
         q.parallel_for(sycl::range<1>(n_blocks), [buf, vertical_blocks, block_size, size, k](sycl::id<1> id) {
             unsigned b = id;
@@ -154,9 +154,8 @@ auto lufact::sycl_dumb(Matrix<double>& A, unsigned const block_size, sycl::queue
                     // A(i, j) -= A(i, k) * A(k, j);
                 }
             }
-        }).wait_and_throw();
+        });
     }
-    q.wait_and_throw();
 }
 
 
@@ -169,20 +168,22 @@ auto lufact::sycl_basic(Matrix<double>& A, [[maybe_unused]] unsigned const block
         q.parallel_for(sycl::range<1>(size-k-1), [buf, size, k](sycl::id<1> i) {
             i += k+1;
             buf[i*size + k] /= buf[k*size + k];
-        }).wait_and_throw();
+        });
 
         q.parallel_for(sycl::range<2>(size-k-1, size-k-1), [buf, size, k](sycl::id<2> id) {
             unsigned i = k+1+id[0], j = k+1+id[1];
             buf[i*size + j] -= buf[i*size + k] * buf[k*size + j];
-        }).wait_and_throw();
+        });
     }
 }
 
 
 
-auto lufact::sycl_block(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
-    if (A.size % block_size != 0) // make our job easier
-        throw std::invalid_argument("block_size must be a multiple of size");
+auto lufact::sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void {
+    block_size = 32;
+
+    if (A.size % block_size != 0)
+        throw std::invalid_argument("Function currently only supports a size multiple of block_size");
 
     const unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
     [[maybe_unused]] const unsigned n_blocks = vertical_blocks * vertical_blocks;
@@ -190,20 +191,94 @@ auto lufact::sycl_block(Matrix<double>& A, unsigned const block_size, sycl::queu
     double * const buf = A.get_buf();
     unsigned const size = A.size;
 
-    for (unsigned k = 0; k < A.size - 1; k++) {
-        q.parallel_for(sycl::range<1>(size-k-1), [buf, size, k](sycl::id<1> i) {
-            i += k+1;
-            buf[i*size + k] /= buf[k*size + k];
-        }).wait_and_throw();
+    for (unsigned i = 0; i < vertical_blocks; ++i) {
+        const unsigned ii0 = i*block_size;
 
-        q.parallel_for(sycl::nd_range<2>(
-            sycl::range<2>(size, size),
-            sycl::range<2>(block_size, block_size)
-        ), [buf, size, k](sycl::nd_item<2> id) {
-            unsigned i = id.get_global_id(0), j = id.get_global_id(1);
-            if (i < k+1 || j < k+1)
-                return;
-            buf[i*size + j] -= buf[i*size + k] * buf[k*size + j];
-        }).wait_and_throw();
+        // diagonal update
+        for (unsigned ii = ii0; ii < ii0+block_size; ++ii) {
+            q.parallel_for(sycl::range<1>(ii0+block_size - ii - 1), [=](sycl::id<1> jj) {
+                jj += ii + 1;
+                buf[jj*size + ii] /= buf[ii*size + ii];
+            });
+
+            q.parallel_for(sycl::range<1>(ii0+block_size - ii - 1), [=](sycl::id<1> jj) {
+                jj += ii + 1;
+                for (unsigned kk = ii+1; kk < ii0+block_size; ++kk) {
+                    buf[jj*size + kk] -= buf[jj*size + ii] * buf[ii*size + kk];
+                }
+            });
+        }
+
+        if (i+1 >= vertical_blocks)
+            break;
+
+        // lower TRSM
+        for (unsigned j = i+1; j < vertical_blocks; ++j) {
+            const unsigned jj0 = j*block_size;
+            q.parallel_for(sycl::range<2>(block_size, block_size), [=](sycl::id<2> id) {
+                const unsigned ii = ii0 + id[0];
+                const unsigned jj = jj0 + id[1];
+                for (unsigned kk = ii+1; kk < ii0+block_size; ++kk) {
+                    buf[jj*size + kk] -= buf[jj*size + ii] * buf[ii*size + kk];
+                }
+            });
+        }
+
+        // upper TRSM
+        for (unsigned j = i+1; j < vertical_blocks; ++j) {
+            const unsigned jj0 = j*block_size;
+            q.parallel_for(sycl::range<2>(block_size, block_size), [=](sycl::id<2> id) {
+                const unsigned ii = ii0 + id[0];
+                const unsigned jj = jj0 + id[1];
+                buf[jj*size + ii] /= buf[ii*size + ii];
+            });
+
+            q.parallel_for(sycl::range<2>(block_size, block_size), [=](sycl::id<2> id) {
+                const unsigned ii = ii0 + id[0];
+                const unsigned jj = jj0 + id[1];
+                for (unsigned kk = ii + 1; kk < ii0+block_size; ++kk) {
+                    buf[kk*size + jj] -= buf[kk*size + ii] * buf[ii*size + jj];
+                }
+            });
+        }
+
+        const unsigned k = i*block_size;
+        const unsigned k1 = k+block_size;
+        // const unsigned bsize = k1+block_size <= size ? block_size : size-k1;
+        const unsigned bsize = block_size;
+
+        // trailing updates (GEMM)
+        q.submit([&](sycl::handler &h) {
+            sycl::local_accessor<double,2> L({bsize,bsize}, h);
+            sycl::local_accessor<double,2> U({bsize,bsize}, h);
+
+            h.parallel_for(sycl::nd_range<2>(
+                sycl::range<2>(size - k1, size - k1),
+                sycl::range<2>(bsize, bsize)
+                // sycl::id<2>(k1, k1)
+            ), [=](sycl::nd_item<2> it) {
+                const unsigned
+                    li = it.get_local_id(0),
+                    lj = it.get_local_id(1),
+                    gi = k1+it.get_global_id(0),
+                    gj = k1+it.get_global_id(1);
+
+                // copy matrices to local/shared memory
+                L[li][lj] = buf[gi*size + (k+lj)];
+                U[lj][li] = buf[(k+li)*size + gj];
+
+                it.barrier(); // ensure matrices are ready
+
+                // Calculate 
+                double acc = 0;
+                #pragma unroll
+                for (unsigned i = 0; i < bsize; ++i) {
+                    acc += L[li][i] * U[lj][i];
+                }
+
+                buf[gi*size + gj] -= acc;
+
+            });
+        });
     }
 }

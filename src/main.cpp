@@ -2,6 +2,7 @@
 #include <omp.h>
 #include <utility>
 #include <vector>
+#include "hipSYCL/sycl/queue.hpp"
 #include "perf.hpp"
 #include "lu_fact.hpp"
 
@@ -126,12 +127,17 @@ auto sycl(unsigned n, void (*impl)(Matrix<double>& A, unsigned block_size, sycl:
         return;
     }
 
-    sycl::queue q {devices[devid-1]};
+    sycl::queue q {
+        devices[devid-1],
+        sycl::property::queue::in_order(),
+    };
     std::cout << "Will use " << q.get_device().get_info<sycl::info::device::name>() << std::endl;
 
     perform([block_size, &q, impl](Matrix<>& A) {
         impl(A, block_size, q);
     }, n, &q);
+
+    q.wait_and_throw();
 }
 
 }
