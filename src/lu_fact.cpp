@@ -79,16 +79,12 @@ auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -
             for (unsigned i = p+1; i < k1; i++)
                 for (unsigned j = p+1; j < k1; j++)
                     A(i, j) -= A(i, p) * A(p, j);
-
-    for (unsigned k = 0; k < A.size - 1; k++) {
-        if (A(k, k) == 0) {
-            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
-            std::exit(1);
         }
 
         if (k1 >= n) break;
 
-        #pragma omp parallel num_threads(num_threads){
+        #pragma omp parallel num_threads(num_threads)
+        {
             // Compute block column below the pivot tile (L[k1:n, k:k1])
             for (unsigned p = k; p < k1; p++) {
                 #pragma omp for schedule(dynamic)
@@ -116,7 +112,6 @@ auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -
         }
     }
 }
-
 
 
 auto lufact::sycl_dumb(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
