@@ -45,7 +45,7 @@ auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
     Matrix<> A(n);
     Matrix<> A_original(n);
     double *b, *x, *y;
-    startOrResetMatrices(n, A, b, x, y);
+    startOrResetMatrices(n, A, b, x, y, A_original);
 
     A.preview("A");
     std::cout << "b[*]: ";
@@ -76,8 +76,11 @@ auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
         measure(f, A);
     }
     
+    // Uncomment to verify algorithm correctness (very slow for large n) (DEBUG)
+    //lufact::debug_verify(A, A_original); // TEMP: correctness check vs L*U (host A, after copy-back)
+
     solve(A, b, x, y);
-    
+
     A.preview("LU");
     std::cout << "x[*]: ";
     for (unsigned i = 0; i < std::min(10u, n); i++) {

@@ -50,7 +50,7 @@ def parse_metrics(output):
     return time_s, gflops, joules, watts
 
 
-# Feed menu choices in order, ending with "5" to exit.
+# Feed menu choices in order, ending with "0" to exit.
 def build_input_sequence(option, n, block_size=None, threads=None, device=None):
     parts = [str(option), str(n)]
     if option == 2:

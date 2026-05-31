@@ -10,6 +10,12 @@
 auto lufact::sequential(Matrix<double>& A) -> void {
     Matrix<unsigned> count(A.size);
     for (unsigned k = 0; k < A.size - 1; k++) {
+        // Check to avoid division by zero
+        if (A(k, k) == 0) {
+            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+            std::exit(1);
+        }        
+
         // Compute column k (divide each element by the pivot)
         for (unsigned i = k+1; i < A.size; i++) { 
             A(i, k) /= A(k, k);
@@ -30,6 +36,12 @@ auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
 
     for (unsigned k = 0; k < n; k += block_size) {
         const unsigned k1 = std::min(n, k + block_size);
+
+        // Check to avoid division by zero
+        if (A(k, k) == 0) {
+            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+            std::exit(1);
+        }
 
         // Run standard sequential LU factorization on A[k:k1, k:k1] (produces a small L and U in-place)
         for (unsigned p = k; p < k1 - 1; p++) {
@@ -181,71 +193,52 @@ auto lufact::sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) 
     block_size = 32;
 
     if (A.size % block_size != 0)
-        throw std::invalid_argument("Function currently only supports a size multiple of block_size");
-
-    const unsigned vertical_blocks = A.size / block_size;
+        throw std::invalid_argument("sycl_block currently only supports sizes that are a multiple of block_size");
 
     double * const buf = A.get_buf();
-    unsigned const size = A.size;
+    const unsigned size  = A.size;
+    const unsigned bsize = block_size;
 
-    for (unsigned i = 0; i < vertical_blocks; ++i) {
-        const unsigned ii0 = i*block_size;
+    for (unsigned k = 0; k < size; k += block_size) {
+        const unsigned k1 = k + block_size; // == min(size, k+block_size) since size % block_size == 0
 
-        // diagonal update
-        for (unsigned ii = ii0; ii < ii0+block_size; ++ii) {
-            q.parallel_for(sycl::range<1>(ii0+block_size - ii - 1), [=](sycl::id<1> jj) {
-                jj += ii + 1;
-                buf[jj*size + ii] /= buf[ii*size + ii];
+        // 1. panel factorization of the diagonal block A[k:k1, k:k1] (parallel over rows, sequential pivot)
+        for (unsigned p = k; p < k1 - 1; ++p) {
+            q.parallel_for(sycl::range<1>(k1 - p - 1), [=](sycl::id<1> id) {
+                const unsigned i = p + 1 + id;
+                buf[i*size + p] /= buf[p*size + p];
             });
-
-            q.parallel_for(sycl::range<1>(ii0+block_size - ii - 1), [=](sycl::id<1> jj) {
-                jj += ii + 1;
-                for (unsigned kk = ii+1; kk < ii0+block_size; ++kk) {
-                    buf[jj*size + kk] -= buf[jj*size + ii] * buf[ii*size + kk];
-                }
+            q.parallel_for(sycl::range<1>(k1 - p - 1), [=](sycl::id<1> id) {
+                const unsigned i = p + 1 + id;
+                for (unsigned j = p + 1; j < k1; ++j)
+                    buf[i*size + j] -= buf[i*size + p] * buf[p*size + j];
             });
         }
 
-        if (i+1 >= vertical_blocks)
-            break;
+        if (k1 >= size) break; // No more blocks to process
 
-        const unsigned lower_rows = (vertical_blocks - i - 1) * block_size;
-        const unsigned lower_start = (i + 1) * block_size;
-
-        // lower TRSM: compute L[J,I] for all J>I by solving A[J,I] * U[I,I]^{-1}
-        // process each diagonal column k sequentially; rows across all lower blocks in parallel
-        for (unsigned k = ii0; k < ii0 + block_size; ++k) {
-            q.parallel_for(sycl::range<1>(lower_rows), [=](sycl::id<1> id) {
-                const unsigned jj = lower_start + id[0];
-                buf[jj*size + k] /= buf[k*size + k];
-            });
-            if (k + 1 < ii0 + block_size) {
-                q.parallel_for(sycl::range<2>(lower_rows, ii0 + block_size - k - 1), [=](sycl::id<2> id) {
-                    const unsigned jj = lower_start + id[0];
-                    const unsigned kk = k + 1 + id[1];
-                    buf[jj*size + kk] -= buf[jj*size + k] * buf[k*size + kk];
-                });
+        // 2. lower TRSM, L[k1:n, k:k1] (each work item owns one row; pivot loop sequential, with divide)
+        q.parallel_for(sycl::range<1>(size - k1), [=](sycl::id<1> id) {
+            const unsigned i = k1 + id;
+            for (unsigned p = k; p < k1; ++p) {
+                buf[i*size + p] /= buf[p*size + p];
+                for (unsigned j = p + 1; j < k1; ++j)
+                    buf[i*size + j] -= buf[i*size + p] * buf[p*size + j];
             }
-        }
+        });
 
-        // upper TRSM: compute U[I,J] for all J>I by solving L[I,I]^{-1} * A[I,J]
-        // process each diagonal row k sequentially; cols across all right blocks in parallel
-        for (unsigned k = ii0; k + 1 < ii0 + block_size; ++k) {
-            q.parallel_for(sycl::range<2>(ii0 + block_size - k - 1, lower_rows), [=](sycl::id<2> id) {
-                const unsigned kk = k + 1 + id[0];
-                const unsigned jj = lower_start + id[1];
-                buf[kk*size + jj] -= buf[kk*size + k] * buf[k*size + jj];
-            });
-        }
+        // 3. upper TRSM, U[k:k1, k1:n] (each work item owns one column; pivot loop sequential, no divide)
+        q.parallel_for(sycl::range<1>(size - k1), [=](sycl::id<1> id) {
+            const unsigned j = k1 + id;
+            for (unsigned p = k; p < k1; ++p)
+                for (unsigned i = p + 1; i < k1; ++i)
+                    buf[i*size + j] -= buf[i*size + p] * buf[p*size + j];
+        });
 
-        const unsigned k = i*block_size;
-        const unsigned k1 = k+block_size;
-        const unsigned bsize = block_size;
-
-        // trailing updates (GEMM)
+        // 4. trailing update (GEMM), A[k1:n, k1:n] -= L[k1:n, k:k1] * U[k:k1, k1:n] (tiled, local memory)
         q.submit([&](sycl::handler &h) {
-            sycl::local_accessor<double,2> L({bsize,bsize}, h);
-            sycl::local_accessor<double,2> U({bsize,bsize}, h);
+            sycl::local_accessor<double,2> L({bsize, bsize}, h);
+            sycl::local_accessor<double,2> U({bsize, bsize}, h);
 
             h.parallel_for(sycl::nd_range<2>(
                 sycl::range<2>(size - k1, size - k1),
@@ -254,21 +247,20 @@ auto lufact::sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) 
                 const unsigned
                     li = it.get_local_id(0),
                     lj = it.get_local_id(1),
-                    gi = k1+it.get_global_id(0),
-                    gj = k1+it.get_global_id(1);
+                    gi = k1 + it.get_global_id(0),
+                    gj = k1 + it.get_global_id(1);
 
-                L[li][lj] = buf[gi*size + (k+lj)];
-                U[lj][li] = buf[(k+li)*size + gj];
+                // Copy the L and U tiles into local/shared memory
+                L[li][lj] = buf[gi*size + (k + lj)]; // L[li][p] = A(gi, k+p)
+                U[lj][li] = buf[(k + li)*size + gj]; // U[lj][p] = A(k+p, gj)
 
-                it.barrier();
+                it.barrier(); // ensure both tiles are ready
 
                 double acc = 0;
-                for (unsigned m = 0; m < bsize; ++m) {
-                    acc += L[li][m] * U[lj][m];
-                }
+                for (unsigned p = 0; p < bsize; ++p)
+                    acc += L[li][p] * U[lj][p];
 
-                buf[gi*size + gj] -= acc;
-
+                buf[gi*size + gj] -= acc; // A(gi,gj) -= sum_p A(gi,p) * A(p,gj)
             });
         });
     }

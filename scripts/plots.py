@@ -11,12 +11,11 @@ IMPL_LABELS = {
     "sequential": "Sequential",
     "block":      "Sequential Block",
     "openmp":     "OpenMP",
-    "sycl_dumb":  "SYCL Dumb",
     "sycl_basic": "SYCL Basic",
     "sycl_block": "SYCL Block",
 }
 
-SYCL_IMPLS = ["sycl_dumb", "sycl_basic", "sycl_block"]
+SYCL_IMPLS = ["sycl_basic", "sycl_block"]
 
 
 def load_data(csv_path):

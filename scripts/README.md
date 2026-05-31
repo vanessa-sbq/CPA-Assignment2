@@ -4,7 +4,7 @@ This folder contains two scripts:
 
 - `run_measurements.py` runs the LU binary multiple times and writes raw results to a CSV.
 - `aggregate_measurements.py` averages the raw results into a final CSV.
-- `plot_measurements.py` generates PNG or PDF plots from the averaged CSV.
+- `plots.py` generates PNG or PDF plots from the averaged CSV.
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ Common flags:
 - `--options 1,2,3,4` (menu options to run)
 - `--sizes 1024,2048,3072` (matrix sizes)
 - `--block-sizes 32,64,128` (block LU sizes)
-- `--threads 1,2,4,8,16` (OpenMP thread counts)
+- `--threads 4,8,16` (OpenMP thread counts)
 - `--runs 3` (repetitions per config)
 
 ### Replace behavior
@@ -55,13 +55,8 @@ It ignores rows with a non-zero `exit_code` and overwrites the output file each 
 
 ## Plot results
 
-Generate plots (time, GFLOP/s, OpenMP scaling, and block size sensitivity) from the averaged CSV:
+Generate plots (time, energy, efficiency, scalability, etc.) from the averaged CSV and save in ``/plots``:
 
 ```bash
-python3 scripts/plot_measurements.py --in measurements_avg.csv --out-dir plots
+python3 scripts/plots.py
 ```
-
-Common flags:
-
-- `--block-size 64` (choose a block size for the time/GFLOP plots)
-- `--threads 8` (choose a thread count for the time/GFLOP plots)

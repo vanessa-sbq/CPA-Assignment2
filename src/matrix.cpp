@@ -4,7 +4,7 @@
 // std::random_device rd;
 // std::mt19937 gen(rd());
 std::mt19937 gen(69420);
-std::uniform_real_distribution<> dis(0.0, 10.0); // TODO: Consider using a larger range
+std::uniform_real_distribution<> dis(0.0, 10.0);
 
 /**
  * @brief Returns a random number in range of [0.0, 10.0]
@@ -15,7 +15,7 @@ double rnd() {
 }
 
 
-auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y) -> void {
+auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y, Matrix<double>& A_original) -> void {
     b = new double[n];
     x = new double[n];
     y = new double[n];
@@ -23,6 +23,7 @@ auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x,
     for (unsigned i = 0; i < n; i++) {
         for (unsigned j = 0; j < n; j++) {
             A.set(i, j, rnd());
+            A_original.set(i, j, A.get(i, j)); // Store original A for later correctness check (vs L*U)
         }
         b[i] = rnd();
     }

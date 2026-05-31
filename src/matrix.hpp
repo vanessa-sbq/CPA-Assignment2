@@ -92,8 +92,9 @@ class Matrix {
  * @param b Pointer to vector b
  * @param x Pointer to vector x
  * @param y Pointer to vector y
+ * @param A_original Matrix A_original
  */
-auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y) -> void;
+auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y, Matrix<double>& A_original) -> void;
 
 /**
  * Frees the matrices.
