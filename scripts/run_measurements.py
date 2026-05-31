@@ -60,7 +60,7 @@ def build_input_sequence(option, n, block_size=None, threads=None, device=None):
     if option > 3:
         parts.append(str(block_size))
         parts.append(str(device))
-    parts.append("5")
+    parts.append("0")
     print(parts)
     return "\n".join(parts) + "\n"
 

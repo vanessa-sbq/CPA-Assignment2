@@ -10,3 +10,4 @@ measurements.csv
 measurements_avg.csv
 .clangd
 local/
+plots/
