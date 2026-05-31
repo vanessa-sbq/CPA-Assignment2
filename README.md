@@ -7,7 +7,7 @@ This project contains the implementations for LU factorization in four variants:
 3. Shared-memory OpenMP LU
 4. SYCL LU
 
-## Running
+## How to Run
 
 ### 1. Configure
 
@@ -19,34 +19,29 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Release --no-warn-unused-cli -S ./src -B ./build
 
 ### 2. Build
 
-#### With CMake:
-
 ```bash
+# CMake
+cmake -DCMAKE_BUILD_TYPE=Release -S ./src -B ./build
 cmake --build ./build --config Release --target all --
-```
-
-#### With Makefile (still requires CMake configuration):
-
-```bash
-make build
 ```
 
 ### 3. Run
 
+#### Interactive:
 ```bash
 bin/Assignment2
 ```
 
-Or:
-
+#### Automated:
 ```bash
-make run
+python3 scripts/run_measurements.py --bin bin/Assignment2 --out measurements.csv
+```
+With energy measurements:
+```bash
+sudo python3 scripts/run_measurements.py --bin bin/Assignment2 --out measurements.csv
+
 ```
 
-The program shows a menu where you can pick the implementation and enter the matrix size $n$ (for $n \times n$).
-For block LU you will be prompted for the block size, and for OpenMP you will be prompted for the thread count.
+**Note:** The script can be run with different arguments to control what is executed. Common options include *--options 1,2,3,4* (menu options), *--sizes 1024,2048,3072* (matrix size), *--block-sizes 32,64,128* (block sizes), *--threads 1,2,4,8,16* (OpenMP threads), and *--runs 3* (repetitions per configuration).
 
-## Performance Experiments
 
-- Matrix sizes: $n \in \{1024, 2048, \ldots, 8192\}$
-- Complexity: $\Theta(\frac{2}{3} n^3)$ flops
