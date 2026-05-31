@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <omp.h>
+#include "lu_fact.hpp"
 #include "perf.hpp"
 
 auto read_energy_uj() -> long long {
@@ -24,13 +25,8 @@ auto read_energy_uj() -> long long {
     return val;
 }
 
-auto display_measurements(
-    double start,
-    double end,
-    unsigned n,
-    double e_before,
-    double e_after
-) -> void {
+
+auto display_measurements(double start, double end, unsigned n, double e_before, double e_after) -> void {
     double executionTime = (end - start);
     printf("\nTime: %g seconds\n", executionTime);
 
@@ -47,6 +43,7 @@ auto display_measurements(
 auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
     (void)q;
     Matrix<> A(n);
+    Matrix<> A_original(n);
     double *b, *x, *y;
     startOrResetMatrices(n, A, b, x, y);
 
@@ -91,20 +88,16 @@ auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
     freeMatrices(b, x, y);
 }
 
+
 auto measure(const Alg& f, Matrix<double>& A) -> void {
     auto e_before = read_energy_uj();
     double start = omp_get_wtime(); // Get start time
 
+    // Perform the factorization
     f(A);
 
     double end = omp_get_wtime(); // Get end time
     auto e_after = read_energy_uj();
 
-    display_measurements(
-        start,
-        end,
-        A.size,
-        (double) e_before,
-        (double) e_after
-    );
+    display_measurements(start, end, A.size, (double) e_before, (double) e_after);
 }

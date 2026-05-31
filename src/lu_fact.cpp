@@ -2,7 +2,10 @@
 #include <omp.h>
 #include <stdexcept>
 #include <sycl/sycl.hpp>
+#include <cmath>
+#include <iostream>
 #include "lu_fact.hpp"
+
 
 auto lufact::sequential(Matrix<double>& A) -> void {
     Matrix<unsigned> count(A.size);
@@ -20,6 +23,7 @@ auto lufact::sequential(Matrix<double>& A) -> void {
         }
     }
 }
+
 
 auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
     const unsigned n = A.size;
@@ -61,6 +65,7 @@ auto lufact::block(Matrix<double>& A, unsigned block_size) -> void {
     }
 }
 
+
 auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -> void {
     const unsigned n = A.size;
 
@@ -74,6 +79,11 @@ auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -
             for (unsigned i = p+1; i < k1; i++)
                 for (unsigned j = p+1; j < k1; j++)
                     A(i, j) -= A(i, p) * A(p, j);
+
+    for (unsigned k = 0; k < A.size - 1; k++) {
+        if (A(k, k) == 0) {
+            std::cerr << "Error: value 0 found in matrix diagonal. Aborting..." << std::endl;
+            std::exit(1);
         }
 
         if (k1 >= n) break;
@@ -267,4 +277,38 @@ auto lufact::sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) 
             });
         });
     }
+}
+
+
+auto lufact::debug_verify(const Matrix<double>& A_lu, const Matrix<double>& A_original, double tol) -> bool {
+    // If the sizes differ, we cannot compare the matrices, so we consider it a verification failure
+    if (A_lu.size != A_original.size) {
+        std::cerr << "Debug verify error: matrix sizes differ." << std::endl;
+        return false;
+    }
+
+    // Compute the maximum absolute error between A_original and L*U (where L and U are obtained from A_lu)
+    double max_abs_err = 0.0;
+    for (unsigned i = 0; i < A_lu.size; i++) {
+        for (unsigned j = 0; j < A_lu.size; j++) {
+            double sum = 0.0;
+            for (unsigned k = 0; k < A_lu.size; k++) {
+                double l = (i == k) ? 1.0 : (i > k ? A_lu.get(i, k) : 0.0);
+                double u = (k <= j) ? A_lu.get(k, j) : 0.0;
+                sum += l * u;
+            }
+            double diff = std::abs(sum - A_original.get(i, j));
+            max_abs_err = std::max(max_abs_err, diff);
+        }
+    }
+
+    // Print the maximum absolute error and whether the verification passed or failed based on the tolerance
+    std::cout << "LU verify max abs error: " << max_abs_err << std::endl;
+    if (max_abs_err > tol) {
+        std::cout << "LU verify FAILED (tol=" << tol << ")" << std::endl;
+        return false;
+    }
+
+    std::cout << "LU verify OK (tol=" << tol << ")" << std::endl;
+    return true;
 }

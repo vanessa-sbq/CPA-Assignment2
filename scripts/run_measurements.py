@@ -23,6 +23,7 @@ OPTION_CONFIGS = {
 }
 BLOCK_SIZES = []
 THREADS_LIST = []
+PARALLEL_BLOCK_SIZE = 128
 
 
 # Parse the program output lines and pull out the metrics we care about.
@@ -168,7 +169,7 @@ def main():
     parser.add_argument("--out", default="measurements.csv", help="CSV output path")
     parser.add_argument("--sizes", default="1024,2048,3072,4096,5120,6144,7168,8192", help="Comma-separated n sizes")
     parser.add_argument("--block-sizes", default="32,64,128", help="Comma-separated block sizes for option 2")
-    parser.add_argument("--threads", default="1,2,4,8,16", help="Comma-separated thread counts for option 3")
+    parser.add_argument("--threads", default="4,8,16", help="Comma-separated thread counts for option 3")
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per config")
     parser.add_argument("--options", default=",".join(sorted(map(str, OPTION_CONFIGS.keys()))), help=f"Menu options to run, comma-separated (1-{max(OPTION_CONFIGS.keys())})")
     parser.add_argument("--device", type=int, default=1, help="Device to use for SYCL")

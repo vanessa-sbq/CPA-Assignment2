@@ -33,6 +33,15 @@ namespace lufact {
     auto sycl_dumb(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
     auto sycl_basic(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
     auto sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
+
+    /**
+     * Debug helper to verify LU factorization by checking that L*U ~= A_original
+     * @param A_lu Matrix containing in-place LU (Doolittle: unit diagonal in L)
+     * @param A_original Original matrix before factorization
+     * @param tol Absolute tolerance for the maximum error
+     * @return true if max absolute error <= tol
+     */
+    auto debug_verify(const Matrix<double>& A_lu, const Matrix<double>& A_original, double tol = 1e-9) -> bool;
 }
 
 #endif // __LU_FACTORIZATION__

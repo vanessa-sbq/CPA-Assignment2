@@ -30,6 +30,7 @@ auto main () -> int {
     unsigned n = 0;
     size_t op = 1;
 
+    // Menu loop to select the LU factorization method and matrix size
     do {
         for (size_t i = 0; i < optionsvec.size(); ++i)
             std::cout << i+1 << ". " << optionsvec[i].first << std::endl;
@@ -60,48 +61,50 @@ auto main () -> int {
     return 0;
 }
 
+
+// Each of these functions performs the corresponding LU factorization method on a matrix of size n x n and measures its performance using the "perform" function defined in "perf.cpp".
 namespace options {
 
-auto sequential(unsigned n) -> void {
-    perform(lufact::sequential, n);
-}
+    auto sequential(unsigned n) -> void {
+        perform(lufact::sequential, n);
+    }
 
-auto block(unsigned n) -> void {
-    unsigned block_size = 64;
-    std::cout << "Block size ? " << std::endl;
-    std::cout << "> ";
-    std::cin >> block_size;
-    if (block_size <= 0) {
-        std::cout << "Invalid block size." << std::endl;
-        return;
+    auto block(unsigned n) -> void {
+        unsigned block_size = 64;
+        std::cout << "Block size ? " << std::endl;
+        std::cout << "> ";
+        std::cin >> block_size;
+        if (block_size <= 0) {
+            std::cout << "Invalid block size." << std::endl;
+            return;
+        }
+        perform([block_size](Matrix<>& A) {
+            lufact::block(A, block_size);
+        }, n);
     }
-    perform([block_size](Matrix<>& A) {
-        lufact::block(A, block_size);
-    }, n);
-}
 
-auto omp(unsigned n) -> void {
-    int nt = 1;
-    std::cout << "Number of threads? " << std::endl;
-    std::cout << "> ";
-    std::cin >> nt;
-    if (nt <= 0) {
-        std::cout << "Invalid thread count." << std::endl;
-        return;
+    auto omp(unsigned n) -> void {
+        int nt = 1;
+        std::cout << "Number of threads? " << std::endl;
+        std::cout << "> ";
+        std::cin >> nt;
+        if (nt <= 0) {
+            std::cout << "Invalid thread count." << std::endl;
+            return;
+        }
+        unsigned block_size = 64;
+        std::cout << "Block size ? " << std::endl;
+        std::cout << "> ";
+        std::cin >> block_size;
+        if (block_size <= 0) {
+            std::cout << "Invalid block size." << std::endl;
+            return;
+        }
+        perform([nt, block_size](Matrix<>& A) {
+            omp_set_num_threads(nt);
+            lufact::omp(A, nt, block_size);
+        }, n);
     }
-    unsigned block_size = 64;
-    std::cout << "Block size ? " << std::endl;
-    std::cout << "> ";
-    std::cin >> block_size;
-    if (block_size <= 0) {
-        std::cout << "Invalid block size." << std::endl;
-        return;
-    }
-    perform([nt, block_size](Matrix<>& A) {
-        omp_set_num_threads(nt);
-        lufact::omp(A, nt, block_size);
-    }, n);
-}
 
 auto sycl(unsigned n, void (*impl)(Matrix<double>& A, unsigned block_size, sycl::queue &qsigned)) -> void {
     unsigned block_size = 64;
