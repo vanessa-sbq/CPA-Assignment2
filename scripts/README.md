@@ -1,10 +1,10 @@
 ## Scripts overview
 
-This folder contains two scripts:
+This folder contains three scripts:
 
 - `run_measurements.py` runs the LU binary multiple times and writes raw results to a CSV.
 - `aggregate_measurements.py` averages the raw results into a final CSV.
-- `plots.py` generates PNG or PDF plots from the averaged CSV.
+- `plots.py` generates PNG plots from the averaged CSV.
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ sudo python3 scripts/run_measurements.py --bin bin/Assignment2 --out measurement
 
 Common flags:
 
-- `--options 1,2,3,4` (menu options to run)
+- `--options 1,2,3,4,5` (menu options to run)
 - `--sizes 1024,2048,3072` (matrix sizes)
 - `--block-sizes 32,64,128` (block LU sizes)
 - `--threads 4,8,16` (OpenMP thread counts)
