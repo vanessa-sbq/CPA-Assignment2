@@ -17,6 +17,9 @@ IMPL_LABELS = {
 
 SYCL_IMPLS = ["sycl_basic", "sycl_block"]
 
+# Adjust to your GPU's measured max power draw (watts)
+GPU_POWER_W = 35
+
 
 # Helper functions to load data and return as dataframe
 def load_data(csv_path):
@@ -35,6 +38,15 @@ def save_fig(fig, name):
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {path}")
+
+
+def add_gpu_power(df):
+    """Add GPU_POWER_W to watts_avg and GPU_POWER_W*time_s_avg to joules_avg for SYCL rows."""
+    df = df.copy()
+    mask = df["implementation"].isin(SYCL_IMPLS)
+    df.loc[mask, "watts_avg"] = df.loc[mask, "watts_avg"] + GPU_POWER_W
+    df.loc[mask, "joules_avg"] = df.loc[mask, "joules_avg"] + GPU_POWER_W * df.loc[mask, "time_s_avg"]
+    return df
 
 
 # Add speedup_seq = sequential_time / impl_time for all rows (including block/sycl).
@@ -354,11 +366,12 @@ def main():
 
     df = load_data(args.in_path)
     df = add_speedup_seq(df)
+    df_power = add_gpu_power(df)
 
     plot_runtime(df)
     plot_speedup(df)
-    plot_wattage(df)
-    plot_energy(df)
+    plot_wattage(df_power)
+    plot_energy(df_power)
     plot_gflops(df)
     plot_openmp_efficiency(df)
     plot_sycl_efficiency(df)
