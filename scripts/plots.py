@@ -229,7 +229,15 @@ def plot_energy(df):
     save_fig(fig, "3b_energy")
 
 
-### Plot 4: OpenMP Efficiency (all threads)
+### Plot 4: GFlop/s - All Implementations (best config)
+def plot_gflops(df):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    _plot_single_line_per_impl(df, ax, "gflops_avg", "GFlop/s")
+    ax.set_title("GFlop/s - All Implementations (best config)")
+    save_fig(fig, "4_gflops")
+
+
+### Plot 5: OpenMP Efficiency (all threads)
 # efficiency = speedup / threads, for all thread counts
 def plot_openmp_efficiency(df):
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -248,10 +256,10 @@ def plot_openmp_efficiency(df):
     ax.set_title("Parallel Efficiency - OpenMP (all thread counts)")
     ax.legend(fontsize=8)
     ax.grid(True, linestyle="--", alpha=0.5)
-    save_fig(fig, "4_openmp_efficiency")
+    save_fig(fig, "5_openmp_efficiency")
 
 
-### Plot 5: SYCL Efficiency (GFlop/s, all implementations, all block sizes) 
+### Plot 6: SYCL Efficiency (GFlop/s, all implementations, all block sizes)
 def plot_sycl_efficiency(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -277,10 +285,10 @@ def plot_sycl_efficiency(df):
     ax.set_title("SYCL Efficiency (GFlop/s) - All Implementations, All Block Sizes")
     ax.legend(loc="best", fontsize=7, ncol=2)
     ax.grid(True, linestyle="--", alpha=0.5)
-    save_fig(fig, "5_sycl_efficiency")
+    save_fig(fig, "6_sycl_efficiency")
 
 
-### Plot 6: OpenMP Scalability (speedup vs. threads) 
+### Plot 7: OpenMP Scalability (speedup vs. threads)
 def plot_openmp_scalability(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -304,10 +312,10 @@ def plot_openmp_scalability(df):
     ax.set_xticks(all_threads)
     ax.legend(loc="upper left", ncol=2, fontsize=8)
     ax.grid(True, linestyle="--", alpha=0.5)
-    save_fig(fig, "6_openmp_scalability")
+    save_fig(fig, "7_openmp_scalability")
 
 
-### Plot 7: SYCL Scalability (GFlop/s vs. block size) 
+### Plot 8: SYCL Scalability (GFlop/s vs. block size)
 # One figure per SYCL implementation, lines per problem size n
 def plot_sycl_scalability(df):
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -331,7 +339,7 @@ def plot_sycl_scalability(df):
         ax.set_xticks(bsizes)
         ax.legend(loc="best", ncol=2, fontsize=8)
         ax.grid(True, linestyle="--", alpha=0.5)
-        save_fig(fig, f"7_sycl_scalability_{impl}")
+        save_fig(fig, f"8_sycl_scalability_{impl}")
 
 
 ### Main entry point: load the data, add speedup_seq, and generate all plots.
@@ -351,6 +359,7 @@ def main():
     plot_speedup(df)
     plot_wattage(df)
     plot_energy(df)
+    plot_gflops(df)
     plot_openmp_efficiency(df)
     plot_sycl_efficiency(df)
     plot_openmp_scalability(df)

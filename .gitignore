@@ -8,4 +8,3 @@ cpa
 .clang-tidy
 .clangd
 local/
-plots/
