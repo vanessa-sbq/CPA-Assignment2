@@ -18,6 +18,7 @@ IMPL_LABELS = {
 SYCL_IMPLS = ["sycl_basic", "sycl_block"]
 
 
+# Helper functions to load data and return as dataframe
 def load_data(csv_path):
     df = pd.read_csv(csv_path)
     for col in ["n", "block_size", "threads", "time_s_avg", "gflops_avg",
@@ -27,6 +28,7 @@ def load_data(csv_path):
     return df
 
 
+# Helper to save figures
 def save_fig(fig, name):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     path = os.path.join(OUTPUT_DIR, f"{name}.png")
@@ -35,6 +37,7 @@ def save_fig(fig, name):
     print(f"Saved {path}")
 
 
+# Add speedup_seq = sequential_time / impl_time for all rows (including block/sycl).
 def add_speedup_seq(df):
     """Add speedup_seq = sequential_time/impl_time for all rows (including block/sycl)."""
     baseline = (
@@ -56,22 +59,23 @@ def add_speedup_seq(df):
     return df
 
 
+# return the block_size with the lowest total time_s_avg across all n
 def pick_best_block_size(df, impl):
-    """Return the block_size with the lowest total time_s_avg across all n."""
     sub = df[(df["implementation"] == impl)].dropna(subset=["block_size", "time_s_avg"])
     if sub.empty:
         return None
     return sub.groupby("block_size")["time_s_avg"].sum().idxmin()
 
 
+# Return the thread count with the lowest total time_s_avg across all n 
 def pick_best_threads(df, impl="openmp"):
-    """Return the thread count with the lowest total time_s_avg across all n."""
     sub = df[(df["implementation"] == impl)].dropna(subset=["threads", "time_s_avg"])
     if sub.empty:
         return None
     return sub.groupby("threads")["time_s_avg"].sum().idxmin()
 
 
+# return a dataframe filtered by implementation and block size, sorted by n, with non-null values for the given metric
 def series_block(df, impl, block_size, metric):
     return (
         df[(df["implementation"] == impl) & (df["block_size"] == block_size)]
@@ -80,6 +84,7 @@ def series_block(df, impl, block_size, metric):
     )
 
 
+# return a dataframe filtered by implementation and thread count, sorted by n, with non-null values for the given metric
 def series_threads(df, impl, threads, metric):
     return (
         df[(df["implementation"] == impl) & (df["threads"] == threads)]
@@ -88,6 +93,7 @@ def series_threads(df, impl, threads, metric):
     )
 
 
+# Return a dataframe filtered by implementation, sorted by n, with non-null values for the given metric
 def series_all(df, impl, metric):
     return (
         df[df["implementation"] == impl]
@@ -97,8 +103,7 @@ def series_all(df, impl, metric):
 
 
 ### Plot 1: Runtime 
-# Series: Sequential | Block (all block sizes) | OpenMP (all threads)* | SYCL *(all 3)
-
+# Series: Sequential | Block (all block sizes) | OpenMP (best block size, all threads) | SYCL (best block size)
 def plot_runtime(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -113,7 +118,7 @@ def plot_runtime(df):
         if not s.empty:
             ax.plot(s["n"], s["time_s_avg"], "s--", label=f"Block (bs={int(bs)})", markersize=5)
 
-    # OpenMP - every thread count (* = best block size, but bs is fixed/absent, so just annotate threads)
+    # OpenMP - every thread count, all block sizes
     for t in sorted(df[df["implementation"] == "openmp"]["threads"].dropna().unique()):
         s = series_threads(df, "openmp", t, "time_s_avg")
         if not s.empty:
@@ -137,8 +142,7 @@ def plot_runtime(df):
 
 
 ### Plot 2: Speedup (baseline: Sequential)
-# Series: Block (all block sizes) | OpenMP (all threads)* | SYCL *(all 3)
-
+# Series: Block (all block sizes) | OpenMP (best block size, all threads) | SYCL (best block size)
 def plot_speedup(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -148,7 +152,7 @@ def plot_speedup(df):
         if not s.empty:
             ax.plot(s["n"], s["speedup_seq"], "s--", label=f"Block (bs={int(bs)})", markersize=5)
 
-    # OpenMP - every thread count
+    # OpenMP - best block size, every thread count
     for t in sorted(df[df["implementation"] == "openmp"]["threads"].dropna().unique()):
         s = series_threads(df, "openmp", t, "speedup_seq")
         if not s.empty:
@@ -173,8 +177,7 @@ def plot_speedup(df):
 
 
 ### Helper for plots 3a/3b 
-# Series: Sequential | Block* | OpenMP (best threads)* | SYCL *(all 3)
-
+# Series: Sequential | Block (best block size) | OpenMP (best threads + best block size) | SYCL (best block size)
 def _plot_single_line_per_impl(df, ax, metric, ylabel):
     # Sequential
     s = series_all(df, "sequential", metric)
@@ -211,7 +214,6 @@ def _plot_single_line_per_impl(df, ax, metric, ylabel):
 
 
 ### Plot 3a: Wattage 
-
 def plot_wattage(df):
     fig, ax = plt.subplots(figsize=(10, 6))
     _plot_single_line_per_impl(df, ax, "watts_avg", "Power (W)")
@@ -220,7 +222,6 @@ def plot_wattage(df):
 
 
 ### Plot 3b: Total Energy Spent
-
 def plot_energy(df):
     fig, ax = plt.subplots(figsize=(10, 6))
     _plot_single_line_per_impl(df, ax, "joules_avg", "Energy (J)")
@@ -230,7 +231,6 @@ def plot_energy(df):
 
 ### Plot 4: OpenMP Efficiency (all threads)
 # efficiency = speedup / threads, for all thread counts
-
 def plot_openmp_efficiency(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -252,7 +252,6 @@ def plot_openmp_efficiency(df):
 
 
 ### Plot 5: SYCL Efficiency (GFlop/s, all implementations, all block sizes) 
-
 def plot_sycl_efficiency(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -282,7 +281,6 @@ def plot_sycl_efficiency(df):
 
 
 ### Plot 6: OpenMP Scalability (speedup vs. threads) 
-
 def plot_openmp_scalability(df):
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -311,7 +309,6 @@ def plot_openmp_scalability(df):
 
 ### Plot 7: SYCL Scalability (GFlop/s vs. block size) 
 # One figure per SYCL implementation, lines per problem size n
-
 def plot_sycl_scalability(df):
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -337,8 +334,7 @@ def plot_sycl_scalability(df):
         save_fig(fig, f"7_sycl_scalability_{impl}")
 
 
-### Main 
-
+### Main entry point: load the data, add speedup_seq, and generate all plots.
 def main():
     parser = argparse.ArgumentParser(description="Generate plots from aggregated measurements.")
     parser.add_argument("--in", dest="in_path", default="measurements_avg.csv",
