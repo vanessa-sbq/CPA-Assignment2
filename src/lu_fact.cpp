@@ -126,50 +126,6 @@ auto lufact::omp(Matrix<double>& A, unsigned num_threads, unsigned block_size) -
 }
 
 
-auto lufact::sycl_dumb(Matrix<double>& A, unsigned const block_size, sycl::queue &q) -> void {
-    const unsigned vertical_blocks = (A.size + block_size - 1) / block_size; // Equivalent to roundup(A.size / block_size)
-    const unsigned n_blocks = vertical_blocks * vertical_blocks;
-
-    double * const buf = A.get_buf();
-    unsigned const size = A.size;
-
-    for (unsigned k = 0; k < A.size - 1; k++) {
-        q.parallel_for(sycl::range<1>(vertical_blocks), [buf, block_size, size, k](sycl::id<1> id){
-            unsigned b = id;
-            for ( // i is the line where the block starts (cannot be < k+1 nor >= A.size)
-                unsigned i = std::max(k+1, b * block_size);
-                i < std::min(size, (b+1) * block_size);
-                i++
-            ) {
-                buf[i*size + k] /= buf[k*size + k];
-                // A(i, k) /= A(k, k);
-            }
-        });
-
-        q.parallel_for(sycl::range<1>(n_blocks), [buf, vertical_blocks, block_size, size, k](sycl::id<1> id) {
-            unsigned b = id;
-            unsigned bi = b / vertical_blocks;
-            unsigned bj = b % vertical_blocks;
-            for ( // i is the line where the block starts (cannot be < k+1 nor >= A.size)
-                unsigned i = std::max(k+1, bi * block_size);
-                i < std::min(size, (bi+1) * block_size);
-                i++
-            ) {
-                for ( // j is the column where the block starts (cannot be < k+1 nor >= A.size)
-                    unsigned j = std::max(k+1, bj * block_size);
-                    j < std::min(size, (bj+1) * block_size);
-                    j++
-                ) {
-                    buf[i*size + j] -= buf[i*size + k] * buf[k*size + j];
-                    // A(i, j) -= A(i, k) * A(k, j);
-                }
-            }
-        });
-    }
-}
-
-
-
 auto lufact::sycl_basic(Matrix<double>& A, [[maybe_unused]] unsigned const block_size, sycl::queue &q) -> void {
     double * const buf = A.get_buf();
     unsigned const size = A.size;
@@ -186,7 +142,6 @@ auto lufact::sycl_basic(Matrix<double>& A, [[maybe_unused]] unsigned const block
         });
     }
 }
-
 
 
 auto lufact::sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void {

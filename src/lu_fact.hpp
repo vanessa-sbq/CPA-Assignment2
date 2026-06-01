@@ -30,7 +30,6 @@ namespace lufact {
      * Performs in-place LU factorization of a matrix using SYCL
      * @param A Square matrix to be factorized
      */
-    auto sycl_dumb(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
     auto sycl_basic(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
     auto sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
 

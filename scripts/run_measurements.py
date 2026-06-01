@@ -17,9 +17,8 @@ OPTION_CONFIGS = {
     1: {"implementation": "sequential"},
     2: {"implementation": "block"},
     3: {"implementation": "openmp"},
-    4: {"implementation": "sycl_dumb"},
-    5: {"implementation": "sycl_basic"},
-    6: {"implementation": "sycl_block"},
+    4: {"implementation": "sycl_basic"},
+    5: {"implementation": "sycl_block"},
 }
 BLOCK_SIZES = []
 THREADS_LIST = []

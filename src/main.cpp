@@ -18,7 +18,6 @@ const std::vector<std::pair<const std::string, void (*)(unsigned)>> optionsvec {
     {"Sequential", options::sequential},
     {"Block", options::block},
     {"OpenMP", options::omp},
-    {"SYCL (Dumb)", [](unsigned n) {options::sycl(n, lufact::sycl_dumb);}},
     {"SYCL (Basic)", [](unsigned n) {options::sycl(n, lufact::sycl_basic);}},
     {"SYCL (Block)", [](unsigned n) {options::sycl(n, lufact::sycl_block);}},
 };
