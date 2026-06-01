@@ -40,27 +40,48 @@ auto display_measurements(double start, double end, unsigned n, double e_before,
     printf("Watts: %.6f\n", watts);
 }
 
-
-auto perform(const Alg& f, unsigned n) -> void {
+auto perform(const Alg& f, unsigned n, sycl::queue *q) -> void {
+    (void)q;
     Matrix<> A(n);
     Matrix<> A_original(n);
     double *b, *x, *y;
-    startOrResetMatrices(n, A, b, x, y);
+    startOrResetMatrices(n, A, b, x, y, A_original);
 
-    for (unsigned i = 0; i < n; i++) {
-        for (unsigned j = 0; j < n; j++) {
-            A_original.set(i, j, A.get(i, j));
-        }
+    A.preview("A");
+    std::cout << "b[*]: ";
+    for (unsigned i = 0; i < std::min(10u, n); i++) {
+        std::cout << b[i] << " ";
+    }
+    std::cout << std::endl;
+
+    if (q) {
+        Matrix<double> A_device(A.size, q);
+        double start_host2dev = omp_get_wtime();
+        q->memcpy(A_device.get_buf(), A.get_buf(), A.size * A.size * sizeof(double)).wait();
+        double host2dev_time = omp_get_wtime() - start_host2dev;
+
+        measure(f, A_device);
+
+        double start_dev2host = omp_get_wtime();
+        q->memcpy(A.get_buf(), A_device.get_buf(), A.size * A.size * sizeof(double)).wait();
+        double dev2host_time = omp_get_wtime() - start_dev2host;
+        
+        printf(
+            "Memory transfer overheads:\n"
+            "Host to device: %.3gs\n"
+            "Device to host: %.3gs\n"
+            , host2dev_time, dev2host_time
+        );
+    } else {
+        measure(f, A);
     }
     
-    measure(f, A);
+    // Uncomment to verify algorithm correctness (very slow for large n) (DEBUG)
+    //lufact::debug_verify(A, A_original); // TEMP: correctness check vs L*U (host A, after copy-back)
 
-    // Uncomment to verify correctness of the LU factorization
-    //lufact::debug_verify(A, A_original, 1e-6);
-    
     solve(A, b, x, y);
-    
-    A.preview("A");
+
+    A.preview("LU");
     std::cout << "x[*]: ";
     for (unsigned i = 0; i < std::min(10u, n); i++) {
         std::cout << x[i] << " ";

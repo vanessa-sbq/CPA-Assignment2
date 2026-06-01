@@ -6,7 +6,6 @@ cpa
 *.xlsx
 .vscode/
 .clang-tidy
-measurements.csv
-measurements_avg.csv
 .clangd
-plots
+local/
+plots/

@@ -17,7 +17,8 @@ OPTION_CONFIGS = {
     1: {"implementation": "sequential"},
     2: {"implementation": "block"},
     3: {"implementation": "openmp"},
-    4: {"implementation": "sycl"},
+    4: {"implementation": "sycl_basic"},
+    5: {"implementation": "sycl_block"},
 }
 BLOCK_SIZES = []
 THREADS_LIST = []
@@ -48,22 +49,26 @@ def parse_metrics(output):
     return time_s, gflops, joules, watts
 
 
-# Feed menu choices in order, ending with "5" to exit.
-def build_input_sequence(option, n, block_size=None, threads=None):
+# Feed menu choices in order, ending with "0" to exit.
+def build_input_sequence(option, n, block_size=None, threads=None, device=None):
     parts = [str(option), str(n)]
     if option == 2:
         parts.append(str(block_size))
     if option == 3:
         parts.append(str(threads))
-        parts.append(str(PARALLEL_BLOCK_SIZE)) # TODO: Don't pass the block size hardcoded here
-    parts.append("5")
+        parts.append(str(block_size))
+    if option > 3:
+        parts.append(str(block_size))
+        parts.append(str(device))
+    parts.append("0")
+    print(parts)
     return "\n".join(parts) + "\n"
 
 
 # Run the binary once with a scripted stdin sequence.
-def run_case(bin_path, option, n, block_size, threads, run_id):
+def run_case(bin_path, option, n, block_size, threads, device, run_id):
     # Build the stdin data to feed into the program based on the menu options and parameters.
-    stdin_data = build_input_sequence(option, n, block_size, threads)
+    stdin_data = build_input_sequence(option, n, block_size, threads, device)
     proc = subprocess.run([bin_path], input=stdin_data, text=True, capture_output=True, check=False)
     # For normal completion, we return the exit code, any error message (empty if exit code is 0), and the captured stdout/stderr.
     return {
@@ -137,7 +142,7 @@ def normalize_row(row):
 
 # Some options have multiple values to iterate over, returns a list of those
 def iter_option_values(opt):
-    if opt == 2:
+    if opt == 2 or opt > 3:
         return BLOCK_SIZES
     if opt == 3:
         return THREADS_LIST
@@ -165,7 +170,8 @@ def main():
     parser.add_argument("--block-sizes", default="32,64,128", help="Comma-separated block sizes for option 2")
     parser.add_argument("--threads", default="4,8,16", help="Comma-separated thread counts for option 3")
     parser.add_argument("--runs", type=int, default=3, help="Repetitions per config")
-    parser.add_argument("--options", default="1,2,3,4", help="Menu options to run, comma-separated (1-4)")
+    parser.add_argument("--options", default=",".join(sorted(map(str, OPTION_CONFIGS.keys()))), help=f"Menu options to run, comma-separated (1-{max(OPTION_CONFIGS.keys())})")
+    parser.add_argument("--device", type=int, default=1, help="Device to use for SYCL")
     args = parser.parse_args()
 
     bin_path = args.bin
@@ -177,6 +183,7 @@ def main():
     BLOCK_SIZES = parse_int_list(args.block_sizes)
     THREADS_LIST = parse_int_list(args.threads)
     options = parse_int_list(args.options)
+    device = int(args.device)
 
     # Create output directory if needed 
     out_path = args.out
@@ -199,7 +206,7 @@ def main():
         implementation = OPTION_CONFIGS[option]["implementation"]
         for n in sizes:
             for opt_value in iter_option_values(option):
-                block_size = opt_value if option == 2 else None
+                block_size = opt_value if option == 2 or option > 3 else 64 if option==3 else None
                 threads = opt_value if option == 3 else None
                 for r in range(args.runs):
                     key = (
@@ -219,7 +226,7 @@ def main():
                     run_counter += 1
                     run_label = build_status_message(f"Run {run_counter}", option, n, block_size, threads, r + 1)
                     print(run_label)
-                    result = run_case(bin_path, option, n, block_size, threads, run_counter)
+                    result = run_case(bin_path, option, n, block_size, threads, device, run_counter)
                     time_s, gflops, joules, watts = parse_metrics(result["stdout"])
                     row = {
                         "timestamp": datetime.now().isoformat(timespec="seconds"),

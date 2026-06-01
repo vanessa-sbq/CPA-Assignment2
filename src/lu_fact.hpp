@@ -2,6 +2,7 @@
 #define __LU_FACTORIZATION__
 
 #include "matrix.hpp"
+#include <sycl/sycl.hpp>
 
 namespace lufact {
     /**
@@ -29,7 +30,8 @@ namespace lufact {
      * Performs in-place LU factorization of a matrix using SYCL
      * @param A Square matrix to be factorized
      */
-    auto sycl(Matrix<double>& A) -> void;
+    auto sycl_basic(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
+    auto sycl_block(Matrix<double>& A, unsigned block_size, sycl::queue &q) -> void;
 
     /**
      * Debug helper to verify LU factorization by checking that L*U ~= A_original

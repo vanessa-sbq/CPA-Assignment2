@@ -1,17 +1,17 @@
 #ifndef __MATRIX__
 #define __MATRIX__
 
+#include <sycl/sycl.hpp>
 #include <iostream>
 
 template<typename T = double>
 class Matrix {
     public:
-    explicit Matrix(unsigned size):
-        size(size),
-        m(new T[size * size]) {}
+    explicit Matrix(unsigned size, sycl::queue *q = nullptr): size(size), q(q), m(q ? (T*)sycl::malloc_device(size * size * sizeof(*m), *q) : new T[size * size]) {}
+    Matrix(const Matrix&) = delete; // prevent copy inside SYCL
 
     ~Matrix() {
-        delete [] m;
+        q ? sycl::free(m, *q) : delete[] m;
     }
 
     /**
@@ -34,7 +34,11 @@ class Matrix {
         this->m[i * this->size + j] = value;
     }
 
-    inline auto operator()(unsigned i ,unsigned j) const -> T& {
+    inline auto operator()(unsigned i, unsigned j) -> T& {
+        return this->m[i * this->size + j];
+    }
+
+    inline auto operator()(unsigned i, unsigned j) const -> const T& {
         return this->m[i * this->size + j];
     }
 
@@ -68,11 +72,16 @@ class Matrix {
         }
     }
 
+    auto inline get_buf() -> T* {
+        return m;
+    }
+
     public:
     /// Number of lines and columns of the matrix
     const unsigned size;
 
     private:
+    sycl::queue* const q;
     T* const m;
 };
 
@@ -83,8 +92,9 @@ class Matrix {
  * @param b Pointer to vector b
  * @param x Pointer to vector x
  * @param y Pointer to vector y
+ * @param A_original Matrix A_original
  */
-auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y) -> void;
+auto startOrResetMatrices(unsigned n, Matrix<double>& A, double*& b, double*& x, double*& y, Matrix<double>& A_original) -> void;
 
 /**
  * Frees the matrices.
