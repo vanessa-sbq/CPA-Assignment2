@@ -89,9 +89,9 @@ def main():
         except (TypeError, ValueError):
             p = None
 
-        if t1 and tp and p and p > 0:
+        if t1 and tp and row["implementation"] != "sequential":
             row["speedup"] = t1 / tp
-            row["efficiency"] = row["speedup"] / p
+            row["efficiency"] = row["speedup"] / p if p and p > 0 else None
         else:
             row["speedup"] = None
             row["efficiency"] = None
